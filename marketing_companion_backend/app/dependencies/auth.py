@@ -8,7 +8,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, ValidationError
 
 from app.core.config import get_settings
-from app.models.user import AuthenticatedUser
+from app.schemas.user import AuthenticatedUser
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
