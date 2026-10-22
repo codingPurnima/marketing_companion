@@ -1,7 +1,7 @@
 
 from fastapi import FastAPI
 
-from app.api.routes import health, auth
+from app.api.routes import health, auth, catalog
 from app.core.config import get_settings
 
 settings = get_settings()
@@ -18,7 +18,9 @@ app.include_router(
 app.include_router(
     auth.router, prefix= settings.api_v1_prefix,
 )
-
+app.include_router(
+    catalog.router, prefix=settings.api_v1_prefix,
+)
 
 @app.get("/")
 def root():
