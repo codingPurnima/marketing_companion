@@ -11,7 +11,7 @@ from app.schemas.catalog import (
     CatalogGenerateRequest,
 )
 from app.services.catalog_service import (
-    catalogGenerationError,
+    CatalogGenerationError,
     generate_catalog,
 )
 
@@ -39,19 +39,34 @@ def generate_catalog_draft(
     try:
         return generate_catalog(request.product_text)
 
-    except catalogGenerationError as exc:
-        message = str(exc)
-        print(message)
-
-        if message == "Gemini API key is not configured.":
+    except CatalogGenerationError as exc:
+        if str(exc) == "Gemini API key is not configured.":
             raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="catalog generation is not configured yet.",
+                status_code=503,
+                detail="Catalogue generation is not configured yet.",
+            ) from exc
+
+        if exc.provider_status_code == 503:
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    "The AI service is temporarily overloaded. "
+                    "Please wait a little and try again."
+                ),
+            ) from exc
+
+        if exc.provider_status_code == 429:
+            raise HTTPException(
+                status_code=429,
+                detail=(
+                    "The AI service is rate-limited. "
+                    "Please wait before trying again."
+                ),
             ) from exc
 
         raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Unable to generate the catalog right now. Please try again.",
+            status_code=502,
+            detail="Unable to generate the catalog right now.",
         ) from exc
 
 @router.post("/drafts", status_code=201)
