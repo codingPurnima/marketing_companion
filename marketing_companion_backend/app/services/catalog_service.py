@@ -1,7 +1,7 @@
 from functools import lru_cache
 
 from google import genai
-from google.genai import types
+from google.genai import types, errors
 from pydantic import ValidationError
 
 from app.core.config import get_settings
@@ -29,7 +29,14 @@ Rules:
 """
 
 
-class catalogGenerationError(Exception):
+class CatalogGenerationError(Exception):
+    def __init__(
+        self,
+        message: str,
+        provider_status_code: int| None= None 
+    ):
+        super().__init__(message)
+        self.provider_status_code= provider_status_code
     """Raised when catalog generation fails."""
 
 
@@ -38,7 +45,7 @@ def get_gemini_client() -> genai.Client:
     settings = get_settings()
 
     if not settings.gemini_api_key:
-        raise catalogGenerationError("Gemini API key is not configured.")
+        raise CatalogGenerationError("Gemini API key is not configured.")
 
     return genai.Client(api_key=settings.gemini_api_key)
 
@@ -62,22 +69,27 @@ def generate_catalog(product_text: str) -> CatalogDraft:
         )
 
         if not response.text:
-            raise catalogGenerationError(
+            raise CatalogGenerationError(
                 "Gemini returned an empty response."
             )
 
         return CatalogDraft.model_validate_json(response.text)
 
-    except catalogGenerationError:
+    except CatalogGenerationError:
         raise
     except ValidationError as exc:
-        raise catalogGenerationError(
+        raise CatalogGenerationError(
             "Gemini returned data that failed validation."
         ) from exc
+    except errors.APIError as exc:
+        raise CatalogGenerationError(
+            "Gemini is temporarily unavailable. Please try again shortly."
+            if exc.code == 503
+            else "Gemini could not process the request.",
+            provider_status_code=exc.code,
+        ) from exc
+
     except Exception as exc:
-        print(str(exc))
-        # Log the real exception server-side later; don't expose API keys
-        # or provider internals to the client.
-        raise catalogGenerationError(
-            "catalog generation failed. Please try again."
+        raise CatalogGenerationError(
+            "Catalogue generation failed. Please try again."
         ) from exc
