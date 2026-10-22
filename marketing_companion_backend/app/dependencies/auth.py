@@ -8,7 +8,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, ValidationError
 
 from app.core.config import get_settings
-from app.schemas.user import AuthenticatedUser
+from app.schemas.user import AuthenticatedContext, AuthenticatedUser
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -18,7 +18,7 @@ async def get_current_user(
         HTTPAuthorizationCredentials | None,
         Depends(bearer_scheme),
     ],
-) -> AuthenticatedUser:
+) -> AuthenticatedContext:
     if credentials is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -60,9 +60,12 @@ async def get_current_user(
 
     try:
         user_data = response.json()
-        return AuthenticatedUser(
-            id=user_data["id"],
-            email=user_data.get("email"),
+        return AuthenticatedContext(
+            user=AuthenticatedUser(
+                id=user_data["id"],
+                email=user_data.get("email"),
+            ),
+            access_token=credentials.credentials,
         )
     except (ValueError, KeyError, ValidationError) as exc:
         raise HTTPException(
