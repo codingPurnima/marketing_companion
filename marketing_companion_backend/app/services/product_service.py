@@ -3,11 +3,17 @@ import httpx
 from app.core.config import get_settings
 from app.dependencies.auth import AuthenticatedContext
 from app.schemas.catalog import CatalogDraft
-
+from datetime import datetime, timezone
 
 class ProductServiceError(Exception):
     """Raised when a Supabase product operation fails."""
 
+class ProductNotFoundError(ProductServiceError):
+    pass
+
+
+class ProductStatusError(ProductServiceError):
+    pass
 
 async def _supabase_request(
     context: AuthenticatedContext,
@@ -25,10 +31,8 @@ async def _supabase_request(
         "Content-Type": "application/json",
     }
 
-# By default, Supabase doesn't return the inserted rows in the HTTP response. By adding this header, we fixed it. It tells PostgREST to return the inserted row as a representation in the response.
-    if method.upper()== "POST":
-        headers["Prefer"]= "return=representation"
-
+    if method.upper() in ("POST", "PATCH"):
+        headers["Prefer"] = "return=representation"
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
             response = await client.request(
@@ -40,8 +44,9 @@ async def _supabase_request(
             )
 
         if not response.is_success:
-            # Log the response safely during production debugging.
-            # Do not return provider details or tokens to the client.
+            print("Supabase status:", response.status_code)
+            print("Supabase error:", response.text)
+
             raise ProductServiceError(
                 f"Supabase operation failed with status "
                 f"{response.status_code}."
@@ -53,10 +58,10 @@ async def _supabase_request(
         return response.json()
 
     except httpx.RequestError as exc:
+        print("Supabase connection error:", str(exc))
         raise ProductServiceError(
             "Supabase is temporarily unavailable."
         ) from exc
-
 
 async def save_product_draft(
     context: AuthenticatedContext,
@@ -110,3 +115,67 @@ async def list_product_drafts(
         )
 
     return result
+
+async def update_product_publication(
+    context: AuthenticatedContext,
+    product_id: str,
+    publish: bool,
+) -> dict:
+    # Verify ownership and retrieve the current status.
+    result = await _supabase_request(
+        context,
+        "GET",
+        "products",
+        params={
+            "select": "id,status",
+            "id": f"eq.{product_id}",
+            "owner_id": f"eq.{context.user.id}",
+        },
+    )
+
+    if not isinstance(result, list) or not result:
+        raise ProductNotFoundError("Product not found.")
+
+    product = result[0]
+    current_status = product["status"]
+
+    target_status = "published" if publish else "draft"
+
+    # Make repeated requests safe.
+    if current_status == target_status:
+        return product
+
+    expected_status = "draft" if publish else "published"
+
+    if current_status != expected_status:
+        raise ProductStatusError(
+            f"Cannot change publication status from {current_status}."
+        )
+
+    payload = {
+        "status": target_status,
+        "published_at": (
+            datetime.now(timezone.utc).isoformat()
+            if publish
+            else None
+        ),
+    }
+
+    updated = await _supabase_request(
+        context,
+        "PATCH",
+        "products",
+        params={
+            "id": f"eq.{product_id}",
+            "owner_id": f"eq.{context.user.id}",
+            "select": "id,title,description,category,price,currency,status,published_at",
+        },
+        payload=payload,
+    )
+
+    if not isinstance(updated, list) or not updated:
+        raise ProductServiceError(
+            "Unable to update product publication status."
+        )
+
+    return updated[0]
