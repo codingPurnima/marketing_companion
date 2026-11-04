@@ -104,7 +104,7 @@ async def list_product_drafts(
         params={
             "select": "id,title,description,category,price,currency,status,updated_at",
             "owner_id": f"eq.{context.user.id}",
-            "status": "eq.draft",
+            "status": "in.(draft, published)",
             "order": "updated_at.desc",
         },
     )
