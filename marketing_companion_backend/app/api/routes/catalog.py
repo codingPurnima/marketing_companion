@@ -22,8 +22,11 @@ from app.dependencies.auth import (
 
 from app.services.product_service import (
     ProductServiceError,
+    ProductNotFoundError,
+    ProductStatusError,
     list_product_drafts,
     save_product_draft,
+    update_product_publication,
 )
 
 router = APIRouter(prefix="/catalog", tags=["catalog"])
@@ -102,4 +105,71 @@ async def get_catalog_drafts(
         raise HTTPException(
             status_code=502,
             detail="Unable to retrieve product drafts.",
+        ) from exc
+
+@router.patch("/{product_id}/publish")
+async def publish_product(
+    product_id: str,
+    context: Annotated[
+        AuthenticatedContext,
+        Depends(get_current_user),
+    ],
+):
+    try:
+        return await update_product_publication(
+            context,
+            product_id,
+            publish=True,
+        )
+
+    except ProductNotFoundError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail="Product not found.",
+        ) from exc
+
+    except ProductStatusError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail=str(exc),
+        ) from exc
+
+    except ProductServiceError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail="Unable to publish the product.",
+        ) from exc
+
+
+@router.patch("/{product_id}/unpublish")
+async def unpublish_product(
+    product_id: str,
+    context: Annotated[
+        AuthenticatedContext,
+        Depends(get_current_user),
+    ],
+):
+    try:
+        return await update_product_publication(
+            context,
+            product_id,
+            publish=False,
+        )
+
+    except ProductNotFoundError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail="Product not found.",
+        ) from exc
+
+    except ProductStatusError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail=str(exc),
+        ) from exc
+
+    except ProductServiceError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail="Unable to unpublish the product.",
         ) from exc
