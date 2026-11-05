@@ -93,6 +93,52 @@ async def save_product_draft(
 
     return result[0]
 
+async def update_product(
+    context: AuthenticatedContext,
+    product_id: str,
+    draft: CatalogDraft,
+) -> dict:
+    # Verify that the product belongs to the authenticated artisan.
+    existing = await _supabase_request(
+        context,
+        "GET",
+        "products",
+        params={
+            "select": "id,status",
+            "id": f"eq.{product_id}",
+            "owner_id": f"eq.{context.user.id}",
+        },
+    )
+
+    if not isinstance(existing, list) or not existing:
+        raise ProductNotFoundError("Product not found.")
+
+    payload = {
+        "title": draft.title,
+        "description": draft.description,
+        "category": draft.category,
+        "price": draft.price_inr,
+    }
+
+    updated = await _supabase_request(
+        context,
+        "PATCH",
+        "products",
+        params={
+            "id": f"eq.{product_id}",
+            "owner_id": f"eq.{context.user.id}",
+            "select": (
+                "id,title,description,category,price,currency,"
+                "status,published_at,updated_at"
+            ),
+        },
+        payload=payload,
+    )
+
+    if not isinstance(updated, list) or not updated:
+        raise ProductServiceError("Unable to update the product.")
+
+    return updated[0]
 
 async def list_product_drafts(
     context: AuthenticatedContext,
@@ -104,7 +150,7 @@ async def list_product_drafts(
         params={
             "select": "id,title,description,category,price,currency,status,updated_at",
             "owner_id": f"eq.{context.user.id}",
-            "status": "in.(draft, published)",
+            "status": "in.(draft,published)",
             "order": "updated_at.desc",
         },
     )
