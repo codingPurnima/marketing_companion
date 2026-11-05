@@ -27,6 +27,7 @@ from app.services.product_service import (
     list_product_drafts,
     save_product_draft,
     update_product_publication,
+    update_product,
 )
 
 router = APIRouter(prefix="/catalog", tags=["catalog"])
@@ -107,6 +108,36 @@ async def get_catalog_drafts(
             detail="Unable to retrieve product drafts.",
         ) from exc
 
+
+@router.patch("/{product_id}")
+async def edit_catalog_product(
+    product_id: str,
+    draft: CatalogDraft,
+    context: Annotated[
+        AuthenticatedContext,
+        Depends(get_current_user),
+    ],
+):
+    try:
+        return await update_product(
+            context,
+            product_id,
+            draft,
+        )
+
+    except ProductNotFoundError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail="Product not found.",
+        ) from exc
+
+    except ProductServiceError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail="Unable to update the product.",
+        ) from exc
+
+    
 @router.patch("/{product_id}/publish")
 async def publish_product(
     product_id: str,
