@@ -18,26 +18,29 @@ Future<void> main() async {
   runApp(const ArtisanDiscoveryApp());
 }
 
+
 class ArtisanDiscoveryApp extends StatelessWidget {
   const ArtisanDiscoveryApp({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final initialArtisanId =
+        Uri.base.queryParameters['artisan'];
+
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Artisan Marketplace',
       theme: AppTheme.themeData,
+
+      home: initialArtisanId != null && initialArtisanId.isNotEmpty
+          ? ArtisanProfilePage(ownerId: initialArtisanId)
+          : const DiscoverPage(),
+
       onGenerateRoute: (settings) {
-        debugPrint('ROUTE RECEIVED: ${settings.name}');
-
-        final uri = Uri.parse(settings.name ?? '/');
-        debugPrint('ROUTE QUERY PARAMETERS: ${uri.queryParameters}');
-
-        final artisanId = uri.queryParameters['artisan'];
-        debugPrint('ARTISAN ID: $artisanId');
+        final routeUri = Uri.parse(settings.name ?? '/');
+        final artisanId = routeUri.queryParameters['artisan'];
 
         if (artisanId != null && artisanId.isNotEmpty) {
-          debugPrint('OPENING ARTISAN PROFILE FOR: $artisanId');
           return MaterialPageRoute(
             settings: settings,
             builder: (_) => ArtisanProfilePage(ownerId: artisanId),
