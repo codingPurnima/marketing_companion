@@ -35,9 +35,15 @@ jobs:
         run: flutter build web --release
 
       - name: Deploy to Cloudflare
+        id: deploy
         uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy marketing_companion_web/build/web --project-name=marketing-companion
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Show deployment information
+        run: |
+          echo "Deployment URL: ${{ steps.deploy.outputs.deployment-url }}"
+          echo "Deployment alias: ${{ steps.deploy.outputs.pages-deployment-alias-url }}"
