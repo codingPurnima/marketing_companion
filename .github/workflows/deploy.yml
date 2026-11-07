@@ -27,11 +27,11 @@ jobs:
           cache: true
 
       - name: Install dependencies
-        working-directory: marketing_companion_web
+        working-directory: marketing_companion/marketing_companion_web
         run: flutter pub get
 
       - name: Build Flutter Web
-        working-directory: marketing_companion_web
+        working-directory: marketing_companion/marketing_companion_web
         run: flutter build web --release
 
       - name: Deploy to Cloudflare
@@ -40,7 +40,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy marketing_companion_web/build/web --project-name=marketing-companion
+          command: pages deploy marketing_companion/marketing_companion_web/build/web --project-name=marketing-companion
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Show deployment information
