@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:marketing_companion_web/screens/discover_page.dart';
 import 'package:marketing_companion_web/screens/artisan_profile_page.dart';
+import 'package:marketing_companion_web/theme/app_theme.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'config/supabase_config.dart';
@@ -25,21 +26,15 @@ class ArtisanDiscoveryApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Artisan Marketplace',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF8B5E3C),
-        ),
-        useMaterial3: true,
-      ),
+      theme: AppTheme.themeData,
       onGenerateRoute: (settings) {
-          debugPrint('ROUTE RECEIVED: ${settings.name}');
+        debugPrint('ROUTE RECEIVED: ${settings.name}');
 
         final uri = Uri.parse(settings.name ?? '/');
-          debugPrint('ROUTE QUERY PARAMETERS: ${uri.queryParameters}');
+        debugPrint('ROUTE QUERY PARAMETERS: ${uri.queryParameters}');
 
         final artisanId = uri.queryParameters['artisan'];
-          debugPrint('ARTISAN ID: $artisanId');
-
+        debugPrint('ARTISAN ID: $artisanId');
 
         if (artisanId != null && artisanId.isNotEmpty) {
           debugPrint('OPENING ARTISAN PROFILE FOR: $artisanId');
