@@ -24,6 +24,7 @@ from app.services.product_service import (
     ProductServiceError,
     ProductNotFoundError,
     ProductStatusError,
+    list_archived_products,
     list_product_drafts,
     save_product_draft,
     update_product_publication,
@@ -108,6 +109,21 @@ async def get_catalog_drafts(
             detail="Unable to retrieve product drafts.",
         ) from exc
 
+@router.get("/archived")
+async def get_archived_products(
+    context: Annotated[
+        AuthenticatedContext,
+        Depends(get_current_user),
+    ],
+):
+    try:
+        return await list_archived_products(context)
+
+    except ProductServiceError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail="Unable to retrieve archived products.",
+        ) from exc
 
 @router.patch("/{product_id}")
 async def edit_catalog_product(
