@@ -55,6 +55,8 @@ class _CatalogScreenState extends State<CatalogScreen> {
 
   List<dynamic> archivedProducts = [];
 
+  String? voiceMatchedProductId;
+
   Future<void> initializeTextToSpeech() async {
     try {
       await flutterTts.setLanguage('en-IN');
@@ -620,6 +622,8 @@ class _CatalogScreenState extends State<CatalogScreen> {
 
     setState(() {
       speechMessage = 'Listening...';
+      voiceMatchedProductId = null;
+inputController.clear();
     });
 
     await speech.listen(
@@ -677,12 +681,77 @@ class _CatalogScreenState extends State<CatalogScreen> {
     }
   }
 
-Future<void> handleVoiceCommand() async {
-  final command = inputController.text
-      .trim()
+String normalizeVoiceText(String value) {
+  return value
       .toLowerCase()
-      .replaceAll(RegExp(r'[.!?,]'), '');
+      .replaceAll(RegExp(r'[^a-z0-9\s]'), ' ')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
+}
 
+String? extractProductName(
+  String command,
+  List<String> prefixes,
+) {
+  for (final prefix in prefixes) {
+    if (command.startsWith('$prefix ')) {
+      return command.substring(prefix.length).trim();
+    }
+  }
+
+  return null;
+}
+
+List<Map<String, dynamic>> findMatchingProducts(
+  String query, {
+  required List<dynamic> source,
+}) {
+  final normalizedQuery = normalizeVoiceText(query);
+  final queryWords = normalizedQuery.split(' ').toSet();
+  final matches = <Map<String, dynamic>>[];
+
+  for (final item in source) {
+    final product = Map<String, dynamic>.from(item as Map);
+    final title = normalizeVoiceText(
+      product['title']?.toString() ?? '',
+    );
+
+    if (title.isEmpty) continue;
+
+    final titleWords = title.split(' ').toSet();
+
+    double score = 0;
+
+    if (title == normalizedQuery) {
+      score = 2;
+    } else if (title.contains(normalizedQuery) ||
+        normalizedQuery.contains(title)) {
+      score = 1.5;
+    } else {
+      final commonWords = queryWords.intersection(titleWords);
+      score = commonWords.length / queryWords.length;
+    }
+
+    if (score >= 0.6) {
+      product['_matchScore'] = score;
+      matches.add(product);
+    }
+  }
+
+  matches.sort(
+    (a, b) => (b['_matchScore'] as double)
+        .compareTo(a['_matchScore'] as double),
+  );
+
+  return matches;
+}
+
+Future<void> handleVoiceCommand() async {
+  final command = normalizeVoiceText(inputController.text);
+
+  if (command.isEmpty) return;
+
+  // 1. List products
   const productListCommands = {
     'show my products',
     'show me my products',
@@ -693,23 +762,377 @@ Future<void> handleVoiceCommand() async {
     'list my catalog',
   };
 
-  if (!productListCommands.contains(command)) return;
+  if (productListCommands.contains(command)) {
+    await runAction(loadDrafts);
 
-  message = 'Loading your products...';
-  setState(() {});
+    if (!mounted) return;
 
-  await runAction(loadDrafts);
+    final response = drafts.isEmpty
+        ? 'You have no products in your catalog yet.'
+        : 'You have ${drafts.length} products in your catalog.';
+
+    await flutterTts.speak(response);
+    return;
+  }
+
+  // Save draft command
+const saveDraftCommands = {
+  'save this draft',
+  'save draft',
+  'save my draft',
+  'save product as draft',
+  'save this product as draft',
+};
+
+if (saveDraftCommands.contains(command)) {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: const Text('Save draft?'),
+      content: Text(
+        editingProductId != null
+            ? 'Save the changes to this product?'
+            : 'Save this product as a draft?',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext, false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(dialogContext, true),
+          child: const Text('Save'),
+        ),
+      ],
+    ),
+  );
 
   if (!mounted) return;
 
-  final count = drafts.length;
+  if (confirmed != true) {
+    message = 'Draft saving cancelled.';
+    setState(() {});
+    await flutterTts.speak('Draft saving cancelled.');
+    return;
+  }
+
+  await runAction(saveDraft);
+
+  if (!mounted) return;
+
+  await flutterTts.speak(message);
+  return;
+}
+
+// Load archived products command
+const archivedProductCommands = {
+  'show archived products',
+  'show my archived products',
+  'load archived products',
+  'load my archived products',
+  'show archived items',
+  'load archived items',
+};
+
+if (archivedProductCommands.contains(command)) {
+  message = 'Loading archived products...';
+  setState(() {});
+
+  await runAction(loadArchivedProducts);
+
+  if (!mounted) return;
+
+  final count = archivedProducts.length;
 
   final response = count == 0
-      ? 'You have no products in your catalog yet.'
-      : 'You have $count products in your catalog. '
-          'Your products are now displayed on the screen.';
+      ? 'You have no archived products.'
+      : 'You have $count archived products. '
+          'They are now displayed on the screen.';
 
   await flutterTts.speak(response);
+  return;
+}
+
+  // 2. Identify command and extract product name
+  String? productName;
+  String? action;
+
+  productName = extractProductName(command, [
+    'find my product',
+    'find the product',
+    'find product',
+    'find my',
+    'find',
+  ]);
+
+  if (productName != null) {
+    action = 'find';
+  }
+
+  productName ??= extractProductName(command, [
+    'edit my product',
+    'edit the product',
+    'edit product',
+    'edit my',
+    'edit',
+  ]);
+
+  if (action == null && productName != null) {
+    action = 'edit';
+  }
+
+  productName ??= extractProductName(command, [
+  'republish archived product',
+  'republish my archived product',
+  'republish the archived product',
+  'republish archived',
+  'republish product',
+  'republish my',
+  'republish',
+]);
+
+if (action == null && productName != null) {
+  action = 'republish';
+}
+
+  productName ??= extractProductName(command, [
+    'publish my draft',
+    'publish the draft',
+    'publish draft',
+    'publish my product',
+    'publish the product',
+    'publish product',
+    'publish my',
+    'publish',
+  ]);
+
+  if (action == null && productName != null) {
+    action = 'publish';
+  }
+
+  productName ??= extractProductName(command, [
+    'archive my product',
+    'archive the product',
+    'archive product',
+    'archive my',
+    'archive',
+  ]);
+
+  if (action == null && productName != null) {
+    action = 'archive';
+  }
+
+  productName ??= extractProductName(command, [
+    'unpublish my product',
+    'unpublish the product',
+    'unpublish product',
+    'unpublish my',
+    'unpublish',
+  ]);
+
+  if (action == null && productName != null) {
+    action = 'archive';
+  }
+
+  if (action == null || productName == null || productName.isEmpty) {
+    return;
+  }
+
+  // 3. Refresh products before searching
+  await runAction(loadDrafts);
+  await runAction(loadArchivedProducts);
+
+
+  if (!mounted) return;
+
+  // 4. Match product by name
+  final sourceProducts = action == 'republish'
+    ? archivedProducts
+    : action == 'find'
+        ? [...drafts, ...archivedProducts]
+        : drafts;
+
+final matches = findMatchingProducts(
+  productName,
+  source: sourceProducts,
+);
+
+  if (matches.isEmpty) {
+    message = 'No matching product found.';
+    setState(() {});
+
+    await flutterTts.speak(
+      'I could not find a product matching $productName.',
+    );
+    return;
+  }
+
+  if (matches.length > 1 &&
+      (matches[0]['_matchScore'] as double) -
+              (matches[1]['_matchScore'] as double) <
+          0.15) {
+    final names = matches
+        .take(3)
+        .map((product) => product['title'].toString())
+        .join(', ');
+
+    message = 'Multiple products match: $names. '
+        'Please specify the product more clearly.';
+
+    setState(() {});
+
+    await flutterTts.speak(
+      'I found multiple matching products. '
+      'Please specify which product you mean.',
+    );
+    return;
+  }
+
+  final product = matches.first;
+  final productId = product['id'].toString();
+  final title = product['title']?.toString() ?? 'this product';
+  final status = product['status']?.toString();
+
+  // 5. Execute non-modifying commands
+  if (action == 'find') {
+    setState(() {
+      voiceMatchedProductId = productId;
+      message = 'Found product: $title';
+    });
+
+    await flutterTts.speak('I found $title.');
+    return;
+  }
+
+  if (action == 'edit') {
+    startEditingProduct(product);
+
+    setState(() {
+      voiceMatchedProductId = productId;
+      message = 'Loaded $title for editing.';
+    });
+
+    await flutterTts.speak(
+      'I have loaded $title. You can now edit its details.',
+    );
+    return;
+  }
+
+  // 6. Validate publication status
+  if (action == 'publish' && status != 'draft') {
+    await flutterTts.speak(
+      '$title is not a draft. Only drafts can be published.',
+    );
+
+    setState(() {
+      message = '$title is not a draft.';
+    });
+    return;
+  }
+
+  if (action == 'archive' && status != 'published') {
+    await flutterTts.speak(
+      '$title is not currently published.',
+    );
+
+    setState(() {
+      message = '$title is not currently published.';
+    });
+    return;
+  }
+
+  if (action == 'republish' && status != 'archived') {
+  message = '$title is not archived.';
+  setState(() {});
+  await flutterTts.speak('$title is not archived.');
+  return;
+}
+
+  // 7. Ask for explicit confirmation
+  final publish = action == 'publish' || action == 'republish';
+
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: Text(publish ? 'Publish product?' : 'Archive product?'),
+      content: Text(
+        publish
+            ? 'Do you want to publish "$title"?'
+            : 'Do you want to archive "$title"? '
+                'It will no longer appear on the customer website.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext, false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(dialogContext, true),
+          child: Text(publish ? 'Publish' : 'Archive'),
+        ),
+      ],
+    ),
+  );
+
+  if (!mounted) return;
+
+  if (confirmed != true) {
+    message = 'Action cancelled.';
+    setState(() {});
+
+    await flutterTts.speak('Action cancelled.');
+    return;
+  }
+
+  // 8. Execute confirmed action
+  setState(() {
+    loading = true;
+    message = '';
+  });
+
+  try {
+  if (action == 'republish') {
+    await publishArchivedProduct(productId);
+    await loadArchivedProducts();
+  } else {
+    await apiRequest(
+      '/api/v1/catalog/$productId/${publish ? 'publish' : 'unpublish'}',
+      method: 'PATCH',
+    );
+
+    await loadDrafts();
+    await loadArchivedProducts();
+  }
+
+  if (!mounted) return;
+
+  final response = action == 'republish'
+      ? '$title has been republished successfully.'
+      : publish
+          ? '$title has been published successfully.'
+          : '$title has been archived successfully.';
+
+  setState(() {
+    voiceMatchedProductId = productId;
+    message = response;
+  });
+
+  await flutterTts.speak(response);
+} catch (e) {
+    if (!mounted) return;
+
+    setState(() {
+      message = 'Could not complete the action: $e';
+    });
+
+    await flutterTts.speak('Sorry, the action could not be completed.');
+  } finally {
+    if (mounted) {
+      setState(() {
+        loading = false;
+      });
+    }
+  }
 }
 
   @override
@@ -937,7 +1360,16 @@ Future<void> handleVoiceCommand() async {
                 'Product: $productId | Image path: ${draftImagePaths[productId]}',
               );
               return Card(
-                clipBehavior: Clip.antiAlias,
+  clipBehavior: Clip.antiAlias,
+  shape: RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(12),
+    side: BorderSide(
+      color: productId == voiceMatchedProductId
+          ? Theme.of(context).colorScheme.primary
+          : Colors.transparent,
+      width: 2,
+    ),
+  ),
                 child: Padding(
                   padding: const EdgeInsets.all(12),
                   child: Column(
