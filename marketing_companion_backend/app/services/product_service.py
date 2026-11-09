@@ -162,12 +162,33 @@ async def list_product_drafts(
 
     return result
 
+async def list_archived_products(
+    context: AuthenticatedContext,
+) -> list:
+    result = await _supabase_request(
+        context,
+        "GET",
+        "products",
+        params={
+            "select": "id,title,description,category,price,currency,status,updated_at",
+            "owner_id": f"eq.{context.user.id}",
+            "status": "eq.archived",
+            "order": "updated_at.desc",
+        },
+    )
+
+    if not isinstance(result, list):
+        raise ProductServiceError(
+            "Unexpected response while retrieving archived products."
+        )
+
+    return result
+
 async def update_product_publication(
     context: AuthenticatedContext,
     product_id: str,
     publish: bool,
 ) -> dict:
-    # Verify ownership and retrieve the current status.
     result = await _supabase_request(
         context,
         "GET",
@@ -185,15 +206,18 @@ async def update_product_publication(
     product = result[0]
     current_status = product["status"]
 
-    target_status = "published" if publish else "draft"
+    target_status = "published" if publish else "archived"
 
-    # Make repeated requests safe.
     if current_status == target_status:
         return product
 
-    expected_status = "draft" if publish else "published"
+    allowed_statuses = (
+        {"draft", "archived"}
+        if publish
+        else {"published"}
+    )
 
-    if current_status != expected_status:
+    if current_status not in allowed_statuses:
         raise ProductStatusError(
             f"Cannot change publication status from {current_status}."
         )
