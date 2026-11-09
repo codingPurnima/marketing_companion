@@ -9,6 +9,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/app_config.dart';
 import 'profile_screen.dart';
 
+import 'package:speech_to_text/speech_to_text.dart';
+import 'package:flutter_tts/flutter_tts.dart';
+
 class CatalogScreen extends StatefulWidget {
   const CatalogScreen({super.key});
 
@@ -43,6 +46,28 @@ class _CatalogScreenState extends State<CatalogScreen> {
 
   String? editingProductId;
 
+  final SpeechToText speech = SpeechToText();
+
+  bool speechAvailable = false;
+  bool isListening = false;
+  String speechMessage = '';
+  final FlutterTts flutterTts = FlutterTts();
+
+  List<dynamic> archivedProducts = [];
+
+  Future<void> initializeTextToSpeech() async {
+    try {
+      await flutterTts.setLanguage('en-IN');
+      await flutterTts.setSpeechRate(0.45);
+      await flutterTts.setPitch(1.0);
+      await flutterTts.awaitSpeakCompletion(true);
+
+      debugPrint('TTS initialized successfully');
+    } catch (e) {
+      debugPrint('TTS initialization error: $e');
+    }
+  }
+
   Map<String, String> get authHeaders {
     final token = supabase.auth.currentSession?.accessToken;
 
@@ -55,8 +80,6 @@ class _CatalogScreenState extends State<CatalogScreen> {
       'Content-Type': 'application/json',
     };
   }
-
-  List<dynamic> archivedProducts = [];
 
   Future<dynamic> apiRequest(
     String path, {
@@ -148,6 +171,13 @@ class _CatalogScreenState extends State<CatalogScreen> {
   }
 
   Future<void> generateCatalog() async {
+    if (inputController.text.trim().isEmpty) {
+      setState(() {
+        message = 'Please describe your product first.';
+      });
+      return;
+    }
+
     await runAction(() async {
       final result = await apiRequest(
         '/api/v1/catalog/generate',
@@ -164,6 +194,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
 
       setState(() => generatedDraft = draft);
       message = 'Catalog generated. Review the fields before saving.';
+      await speakGeneratedCatalog(draft);
     });
   }
 
@@ -351,9 +382,19 @@ class _CatalogScreenState extends State<CatalogScreen> {
         if (!mounted) return;
 
         setState(() {
+          savedProductId = null;
+          editingProductId = null;
+
+          inputController.clear();
+          titleController.clear();
+          descriptionController.clear();
+          categoryController.text = 'other';
+          priceController.clear();
+
+          generatedDraft = null;
           selectedImage = null;
           selectedImageBytes = null;
-          savedProductId = null;
+
           message = 'Draft saved and image uploaded successfully.';
         });
       } else {
@@ -361,6 +402,16 @@ class _CatalogScreenState extends State<CatalogScreen> {
 
         setState(() {
           savedProductId = null;
+          editingProductId = null;
+
+          inputController.clear();
+          titleController.clear();
+          descriptionController.clear();
+          categoryController.text = 'other';
+          priceController.clear();
+
+          generatedDraft = null;
+
           message = 'Draft saved successfully.';
         });
       }
@@ -520,6 +571,111 @@ class _CatalogScreenState extends State<CatalogScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    initializeSpeech();
+    initializeTextToSpeech();
+  }
+
+  Future<void> initializeSpeech() async {
+    try {
+      final available = await speech.initialize(
+        onStatus: (status) {
+          if (!mounted) return;
+
+          setState(() {
+            isListening = status == 'listening';
+          });
+        },
+        onError: (error) {
+          if (!mounted) return;
+
+          setState(() {
+            isListening = false;
+            speechMessage = error.errorMsg;
+          });
+        },
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        speechAvailable = available;
+        speechMessage = available
+            ? 'Voice input is ready.'
+            : 'Speech recognition is unavailable on this device.';
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        speechAvailable = false;
+        speechMessage = 'Could not initialize speech recognition.';
+      });
+    }
+  }
+
+  Future<void> startListening() async {
+    if (!speechAvailable || loading) return;
+
+    setState(() {
+      speechMessage = 'Listening...';
+    });
+
+    await speech.listen(
+      onResult: (result) {
+        if (!mounted) return;
+
+        setState(() {
+          inputController.text = result.recognizedWords;
+          inputController.selection = TextSelection.collapsed(
+            offset: inputController.text.length,
+          );
+        });
+      },
+      listenFor: const Duration(minutes: 1),
+      pauseFor: const Duration(seconds: 5),
+      partialResults: true,
+    );
+  }
+
+  Future<void> stopListening() async {
+    await speech.stop();
+
+    if (!mounted) return;
+
+    setState(() {
+      isListening = false;
+      speechMessage = 'Voice input captured. Review the transcription.';
+    });
+  }
+
+  Future<void> speakGeneratedCatalog(Map<String, dynamic> draft) async {
+    final title = draft['title']?.toString() ?? '';
+    final description = draft['description']?.toString() ?? '';
+    final category = draft['category']?.toString() ?? 'other';
+    final price = draft['price_inr']?.toString();
+
+    final summary =
+        '''
+    Your catalog draft is ready.
+    Product title: $title.
+    Category: $category.
+    ${price != null && price.isNotEmpty ? 'Price: $price rupees.' : 'No price was provided.'}
+    Description: $description.
+    Please review these details before saving.
+  ''';
+
+    try {
+      debugPrint('TTS: Starting speech');
+      final result = await flutterTts.speak(summary);
+      debugPrint('TTS speak result: $result');
+    } catch (e) {
+      debugPrint('TTS playback error: $e');
+    }
+  }
+
+  @override
   void dispose() {
     inputController.dispose();
     titleController.dispose();
@@ -527,6 +683,8 @@ class _CatalogScreenState extends State<CatalogScreen> {
     categoryController.dispose();
     priceController.dispose();
     selectedImageBytes = null;
+    speech.stop();
+    flutterTts.stop();
     super.dispose();
   }
 
@@ -562,21 +720,50 @@ class _CatalogScreenState extends State<CatalogScreen> {
             '1. Generate catalog',
             style: Theme.of(context).textTheme.titleLarge,
           ),
-          TextField(
-            controller: inputController,
-            minLines: 3,
-            maxLines: 6,
-            decoration: const InputDecoration(
-              labelText: 'Describe your product',
-              hintText:
-                  'I make handmade blue pottery bowls. Each costs 500 rupees...',
-              border: OutlineInputBorder(),
-            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: inputController,
+                  minLines: 3,
+                  maxLines: 6,
+                  decoration: const InputDecoration(
+                    labelText: 'Describe your product',
+                    hintText:
+                        'I make handmade blue pottery bowls. Each costs 500 rupees...',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton.filled(
+                tooltip: isListening ? 'Stop recording' : 'Start voice input',
+                onPressed: !speechAvailable
+                    ? null
+                    : isListening
+                    ? stopListening
+                    : startListening,
+                icon: Icon(isListening ? Icons.stop : Icons.mic),
+              ),
+            ],
           ),
+          if (speechMessage.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                speechMessage,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
           const SizedBox(height: 8),
           FilledButton(
-            onPressed: loading ? null : generateCatalog,
-            child: const Text('Generate with Gemini'),
+            onPressed: loading
+                ? null
+                : inputController.text.trim().isEmpty
+                ? null
+                : generateCatalog,
+            child: const Text('Generate Catalog'),
           ),
           const Divider(height: 32),
           Text(
