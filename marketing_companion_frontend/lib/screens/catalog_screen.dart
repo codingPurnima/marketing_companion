@@ -648,6 +648,8 @@ class _CatalogScreenState extends State<CatalogScreen> {
       isListening = false;
       speechMessage = 'Voice input captured. Review the transcription.';
     });
+
+    await handleVoiceCommand();
   }
 
   Future<void> speakGeneratedCatalog(Map<String, dynamic> draft) async {
@@ -674,6 +676,41 @@ class _CatalogScreenState extends State<CatalogScreen> {
       debugPrint('TTS playback error: $e');
     }
   }
+
+Future<void> handleVoiceCommand() async {
+  final command = inputController.text
+      .trim()
+      .toLowerCase()
+      .replaceAll(RegExp(r'[.!?,]'), '');
+
+  const productListCommands = {
+    'show my products',
+    'show me my products',
+    'list my products',
+    'load my products',
+    'show my catalog',
+    'show me my catalog',
+    'list my catalog',
+  };
+
+  if (!productListCommands.contains(command)) return;
+
+  message = 'Loading your products...';
+  setState(() {});
+
+  await runAction(loadDrafts);
+
+  if (!mounted) return;
+
+  final count = drafts.length;
+
+  final response = count == 0
+      ? 'You have no products in your catalog yet.'
+      : 'You have $count products in your catalog. '
+          'Your products are now displayed on the screen.';
+
+  await flutterTts.speak(response);
+}
 
   @override
   void dispose() {
