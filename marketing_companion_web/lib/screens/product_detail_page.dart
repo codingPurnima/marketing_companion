@@ -7,10 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 class ProductDetailPage extends StatefulWidget {
   final Map<String, dynamic> product;
 
-  const ProductDetailPage({
-    super.key,
-    required this.product,
-  });
+  const ProductDetailPage({super.key, required this.product});
 
   @override
   State<ProductDetailPage> createState() => _ProductDetailPageState();
@@ -38,33 +35,47 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     return sortedImages;
   }
 
-  void contactArtisan() {
+  Future<void> contactArtisan() async {
     final phone = artisan?['whatsapp_number']?.toString() ?? '';
 
     if (phone.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('WhatsApp contact is not available.'),
-        ),
+        const SnackBar(content: Text('WhatsApp contact is not available.')),
       );
       return;
     }
 
     final cleanPhone = phone.replaceAll(RegExp(r'[^0-9]'), '');
 
-    final productTitle = widget.product['title'] ?? 'this product';
+    final productTitle = widget.product['title']?.toString() ?? 'this product';
 
-    final message = Uri.encodeComponent(
-      'Hello! I am interested in $productTitle. '
-      'Could you please share more details?',
-    );
+    final category = widget.product['category']?.toString() ?? 'Not specified';
 
-    final url = 'https://wa.me/$cleanPhone?text=$message';
+    final price = widget.product['price'];
 
-    launchUrl(
-      Uri.parse(url),
-      mode: LaunchMode.externalApplication,
-    );
+    final priceText = price == null ? 'Price: Not specified' : 'Price: ₹$price';
+
+    final productUrl = Uri.base.toString();
+
+    final enquiryMessage =
+        '''
+Hello! I am interested in this handmade product.
+
+Product: $productTitle
+Category: $category
+$priceText
+
+Product link: $productUrl
+
+Could you please share more details about this product and its availability?
+
+My name: 
+My question:
+''';
+
+    final url = Uri.https('wa.me', '/$cleanPhone', {'text': enquiryMessage});
+
+    await launchUrl(url, mode: LaunchMode.externalApplication);
   }
 
   @override
@@ -81,9 +92,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
 
       final response = await supabase
           .from('artisan_profiles')
-          .select(
-            'public_name, bio, craft, district, state, whatsapp_number',
-          )
+          .select('public_name, bio, craft, district, state, whatsapp_number')
           .eq('user_id', ownerId)
           .maybeSingle();
 
@@ -105,7 +114,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
 
   Future<String?> getImageUrl(Map<String, dynamic> image) async {
     try {
-      final useEnhanced = image['is_enhanced_selected'] == true &&
+      final useEnhanced =
+          image['is_enhanced_selected'] == true &&
           image['enhanced_storage_path'] != null;
 
       final path = useEnhanced
@@ -147,14 +157,14 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         ),
       ),
       // Sticky WhatsApp CTA on mobile
-      bottomNavigationBar: !isWide
-          ? _buildStickyContactBar(context)
-          : null,
+      bottomNavigationBar: !isWide ? _buildStickyContactBar(context) : null,
     );
   }
 
   PreferredSizeWidget _buildAppBar(
-      BuildContext context, Map<String, dynamic> product) {
+    BuildContext context,
+    Map<String, dynamic> product,
+  ) {
     return AppBar(
       backgroundColor: AppColors.surfaceWhite,
       elevation: 0,
@@ -186,10 +196,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Left: Image panel
-        Expanded(
-          flex: 5,
-          child: _buildImagePanel(productImages),
-        ),
+        Expanded(flex: 5, child: _buildImagePanel(productImages)),
 
         const SizedBox(width: 32),
 
@@ -341,9 +348,9 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
 
   Widget _buildProductInfoPanel(
     BuildContext context,
-    Map<String, dynamic> product,
-    {required bool wide}
-  ) {
+    Map<String, dynamic> product, {
+    required bool wide,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -381,10 +388,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         const SizedBox(height: 24),
 
         // Description
-        Text(
-          'About this product',
-          style: AppTextStyles.sectionLabel,
-        ),
+        Text('About this product', style: AppTextStyles.sectionLabel),
         const SizedBox(height: 10),
         Text(
           product['description'] ?? 'No description available.',
@@ -394,10 +398,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
         const SizedBox(height: 28),
 
         // Artisan section
-        Container(
-          height: 1,
-          color: AppColors.divider,
-        ),
+        Container(height: 1, color: AppColors.divider),
         const SizedBox(height: 24),
 
         Text('About the artisan', style: AppTextStyles.sectionLabel),
@@ -432,9 +433,10 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
       );
     }
 
-    final location = [artisan!['district'], artisan!['state']]
-        .where((v) => v != null)
-        .join(', ');
+    final location = [
+      artisan!['district'],
+      artisan!['state'],
+    ].where((v) => v != null).join(', ');
 
     return GestureDetector(
       onTap: () {
