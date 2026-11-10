@@ -12,6 +12,8 @@ import 'profile_screen.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 
+import 'package:share_plus/share_plus.dart';
+
 class CatalogScreen extends StatefulWidget {
   const CatalogScreen({super.key});
 
@@ -1135,6 +1137,35 @@ final matches = findMatchingProducts(
   }
 }
 
+Future<void> shareProduct(Map<String, dynamic> product) async {
+  final productId = product['id']?.toString();
+
+  if (productId == null || productId.isEmpty) return;
+
+  if (product['status'] != 'published') {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Publish this product before sharing it.'),
+      ),
+    );
+    return;
+  }
+
+  final productUrl = Uri.https(
+    '20d50b26.marketing-companion.pages.dev',
+    '/',
+    {'product': productId},
+  ).toString();
+
+  final title = product['title']?.toString() ?? 'this product';
+
+  await SharePlus.instance.share(
+    ShareParams(
+      text: 'Check out my handmade product: $title\n$productUrl',
+    ),
+  );
+}
+
   @override
   void dispose() {
     inputController.dispose();
@@ -1429,6 +1460,12 @@ final matches = findMatchingProducts(
                             icon: const Icon(Icons.unpublished_outlined),
                             label: const Text('Unpublish product'),
                           ),
+                        if (draft['status'] == 'published')
+  OutlinedButton.icon(
+    onPressed: loading ? null : () => shareProduct(draft),
+    icon: const Icon(Icons.share_outlined),
+    label: const Text('Share product'),
+  ),
                       ],
                       if (imageUrl == null) const Text('No image attached'),
                       if (enhancedUrl != null) ...[
