@@ -3,6 +3,7 @@ import 'package:marketing_companion_web/screens/artisan_profile_page.dart';
 import 'package:marketing_companion_web/theme/app_theme.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:marketing_companion_web/screens/discover_page.dart';
 
 class ProductDetailPage extends StatefulWidget {
   final Map<String, dynamic> product;
@@ -55,7 +56,15 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
 
     final priceText = price == null ? 'Price: Not specified' : 'Price: ₹$price';
 
-    final productUrl = Uri.base.toString();
+    final productId = widget.product['id']?.toString();
+
+    if (productId == null || productId.isEmpty) {
+      return;
+    }
+
+    final productUrl = Uri.base
+        .replace(queryParameters: {'product': productId}, fragment: '')
+        .toString();
 
     final enquiryMessage =
         '''
@@ -171,7 +180,16 @@ My question:
       leading: IconButton(
         icon: const Icon(Icons.arrow_back_rounded),
         color: AppColors.textBody,
-        onPressed: () => Navigator.pop(context),
+        onPressed: () {
+          if (Navigator.canPop(context)) {
+            Navigator.pop(context);
+          } else {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const DiscoverPage()),
+            );
+          }
+        },
       ),
       title: Text(
         product['title'] ?? 'Product Details',
