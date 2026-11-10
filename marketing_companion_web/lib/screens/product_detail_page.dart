@@ -59,7 +59,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
 
     final enquiryMessage =
         '''
-Hello! I am interested in this handmade product.
+Hello! I saw your product on your website and I am interested in this handmade product.
 
 Product: $productTitle
 Category: $category
