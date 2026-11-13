@@ -1,6 +1,4 @@
-import json
-import mimetypes
-import time
+
 import uuid
 
 from dataclasses import dataclass
@@ -10,24 +8,10 @@ from urllib.parse import quote
 
 import httpx
 
+import cloudinary
+import cloudinary.uploader
+
 from app.core.config import get_settings
-
-
-PRODUCT_IMAGE_ENHANCEMENT_PROMPT = """
-Improve this photograph for an artisan product catalogue.
-
-Preserve the exact physical product shown in the reference image.
-Do not redesign, replace, invent, remove, or add product details.
-Preserve its original shape, proportions, colours, patterns,
-texture, materials, craftsmanship, and handmade imperfections.
-
-Improve lighting, exposure, sharpness, and photographic clarity.
-Use a clean, subtle, professional product-photography background.
-Keep the product as the central subject.
-
-The result must accurately represent the actual item being sold.
-Do not add text, logos, watermarks, decorations, or extra objects.
-"""
 
 
 @dataclass
@@ -50,35 +34,35 @@ class MockImageEnhancementProvider:
         return EnhancementResult(
             status="mock",
             enhanced_storage_path=None,
-            message=(
-                "Mock provider is active. No image was modified "
-                "or generated. Connect a real provider to enhance it."
-            ),
+            message="Mock provider is active. No image was modified.",
         )
 
 
-class KieImageEnhancementProvider:
+class CloudinaryImageEnhancementProvider:
     def __init__(self, access_token: str):
         settings = get_settings()
 
-        if not settings.kie_api_key:
-            raise ValueError("KIE_API_KEY is not configured.")
+        if not all([
+            settings.cloudinary_cloud_name,
+            settings.cloudinary_api_key,
+            settings.cloudinary_api_secret,
+        ]):
+            raise ValueError("Cloudinary credentials are not configured.")
 
         self.access_token = access_token
         self.supabase_url = settings.supabase_url.rstrip("/")
         self.supabase_key = settings.supabase_publishable_key
-        self.kie_api_key = settings.kie_api_key
-        self.kie_base_url = settings.kie_api_base_url.rstrip("/")
-        self.timeout_seconds = settings.kie_task_timeout_seconds
+
+        cloudinary.config(
+            cloud_name=settings.cloudinary_cloud_name,
+            api_key=settings.cloudinary_api_key,
+            api_secret=settings.cloudinary_api_secret,
+            secure=True,
+        )
 
         self.supabase_headers = {
             "apikey": self.supabase_key,
             "Authorization": f"Bearer {self.access_token}",
-        }
-
-        self.kie_headers = {
-            "Authorization": f"Bearer {self.kie_api_key}",
-            "Content-Type": "application/json",
         }
 
     def _create_signed_url(self, storage_path: str) -> str:
@@ -104,94 +88,41 @@ class KieImageEnhancementProvider:
 
         return signed_url
 
-    def _create_kie_task(self, image_url: str) -> str:
-        response = httpx.post(
-            f"{self.kie_base_url}/api/v1/jobs/createTask",
-            headers=self.kie_headers,
-            json={
-                "model": "gpt-image-2-image-to-image",
-                "input": {
-                    "prompt": PRODUCT_IMAGE_ENHANCEMENT_PROMPT,
-                    "input_urls": [image_url],
-                    "aspect_ratio": "auto",
-                },
-            },
-            timeout=30,
+    def _upload_to_cloudinary(self, signed_url: str) -> dict:
+        result = cloudinary.uploader.upload(
+            signed_url,
+            resource_type="image",
+            folder="artisan-enhancement-temp",
+            unique_filename=True,
+            overwrite=False,
+            eager=[
+                {"effect": "auto_enhance"}
+            ],
+            eager_async=False,
         )
-        response.raise_for_status()
 
-        data = response.json()
+        if not result.get("public_id"):
+            raise RuntimeError("Cloudinary did not return an asset ID.")
 
-        if data.get("code") != 200:
+        eager_results = result.get("eager", [])
+
+        if not eager_results or not eager_results[0].get("secure_url"):
             raise RuntimeError(
-                data.get("msg", "KIE rejected the enhancement request.")
+                "Cloudinary did not return an enhanced image."
             )
 
-        task_id = data.get("data", {}).get("taskId")
-
-        if not task_id:
-            raise RuntimeError("KIE did not return a task ID.")
-
-        return task_id
-
-    def _wait_for_result(self, task_id: str) -> str:
-        deadline = time.monotonic() + self.timeout_seconds
-        delay = 3
-
-        while time.monotonic() < deadline:
-            response = httpx.get(
-                f"{self.kie_base_url}/api/v1/jobs/recordInfo",
-                headers=self.kie_headers,
-                params={"taskId": task_id},
-                timeout=20,
-            )
-            response.raise_for_status()
-
-            data = response.json()
-
-            if data.get("code") != 200:
-                raise RuntimeError(
-                    data.get("msg", "Could not retrieve KIE task status.")
-                )
-
-            task = data.get("data", {})
-            state = task.get("state")
-
-            if state == "success":
-                result_json = task.get("resultJson")
-
-                if isinstance(result_json, str):
-                    result_json = json.loads(result_json)
-
-                result_urls = result_json.get("resultUrls", [])
-
-                if not result_urls:
-                    raise RuntimeError("KIE completed without an output image.")
-
-                return result_urls[0]
-
-            if state == "fail":
-                raise RuntimeError(
-                    task.get("failMsg") or "KIE image generation failed."
-                )
-
-            if state not in {"waiting", "queuing", "generating"}:
-                raise RuntimeError(
-                    f"KIE returned an unexpected task state: {state}"
-                )
-
-            time.sleep(delay)
-            delay = min(delay + 2, 10)
-
-        raise TimeoutError("KIE image generation timed out.")
+        return {
+            "public_id": result["public_id"],
+            "enhanced_url": eager_results[0]["secure_url"],
+        }
 
     def _download_and_upload(
         self,
-        result_url: str,
+        enhanced_url: str,
         original_storage_path: str,
     ) -> str:
         download_response = httpx.get(
-            result_url,
+            enhanced_url,
             follow_redirects=True,
             timeout=60,
         )
@@ -205,13 +136,15 @@ class KieImageEnhancementProvider:
             "image/jpeg": ".jpg",
             "image/png": ".png",
             "image/webp": ".webp",
+            "image/avif": ".avif",
         }
 
         extension = extension_by_type.get(content_type)
 
         if not extension:
             raise RuntimeError(
-                f"KIE returned an unsupported image type: {content_type}"
+                f"Cloudinary returned an unsupported image type: "
+                f"{content_type}"
             )
 
         original_path = PurePosixPath(original_storage_path)
@@ -242,20 +175,38 @@ class KieImageEnhancementProvider:
         if not original_storage_path.strip():
             raise ValueError("An original image path is required.")
 
-        signed_url = self._create_signed_url(original_storage_path)
-        task_id = self._create_kie_task(signed_url)
-        result_url = self._wait_for_result(task_id)
+        cloudinary_public_id = None
 
-        enhanced_path = self._download_and_upload(
-            result_url,
-            original_storage_path,
-        )
+        try:
+            signed_url = self._create_signed_url(original_storage_path)
 
-        return EnhancementResult(
-            status="completed",
-            enhanced_storage_path=enhanced_path,
-            message="Image enhancement completed successfully.",
-        )
+            cloudinary_result = self._upload_to_cloudinary(signed_url)
+
+            cloudinary_public_id = cloudinary_result["public_id"]
+
+            enhanced_path = self._download_and_upload(
+                cloudinary_result["enhanced_url"],
+                original_storage_path,
+            )
+
+            return EnhancementResult(
+                status="completed",
+                enhanced_storage_path=enhanced_path,
+                message="Image enhanced successfully using Cloudinary AI.",
+            )
+
+        finally:
+            # Cloudinary is used temporarily.
+            # Supabase remains the permanent image storage.
+            if cloudinary_public_id:
+                try:
+                    cloudinary.uploader.destroy(
+                        cloudinary_public_id,
+                        resource_type="image",
+                        invalidate=True,
+                    )
+                except Exception:
+                    pass
 
 
 def get_image_enhancement_provider(
@@ -263,7 +214,10 @@ def get_image_enhancement_provider(
 ) -> ImageEnhancementProvider:
     settings = get_settings()
 
-    if settings.image_enhancement_provider == "kie":
-        return KieImageEnhancementProvider(access_token)
+    if settings.image_enhancement_provider == "mock":
+        return MockImageEnhancementProvider()
 
-    return MockImageEnhancementProvider()
+    if settings.image_enhancement_provider == "cloudinary":
+        return CloudinaryImageEnhancementProvider(access_token)
+
+    raise ValueError("Unsupported image enhancement provider.")
