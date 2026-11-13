@@ -12,7 +12,14 @@ class Settings(BaseSettings):
     supabase_url: str
     supabase_publishable_key: str
 
-    gemini_api_key:str |None= None
+    gemini_api_key: str | None = None
+
+    # Cloudinary
+    cloudinary_cloud_name: str | None = None
+    cloudinary_api_key: str | None = None
+    cloudinary_api_secret: str | None = None
+
+    image_enhancement_provider: str = "cloudinary"
 
     model_config = SettingsConfigDict(
         env_file=".env",
