@@ -12,6 +12,7 @@ import cloudinary
 import cloudinary.uploader
 
 from app.core.config import get_settings
+import time
 
 
 @dataclass
@@ -121,12 +122,38 @@ class CloudinaryImageEnhancementProvider:
         enhanced_url: str,
         original_storage_path: str,
     ) -> str:
-        download_response = httpx.get(
-            enhanced_url,
-            follow_redirects=True,
-            timeout=60,
-        )
-        download_response.raise_for_status()
+        download_response = None
+        delay = 2
+        deadline = time.monotonic() + 90
+
+        while time.monotonic() < deadline:
+            response = httpx.get(
+                enhanced_url,
+                follow_redirects=True,
+                timeout=60,
+            )
+
+            if response.status_code == 200:
+                download_response = response
+                break
+
+            if response.status_code != 423:
+                error_detail = response.headers.get(
+                    "X-Cld-Error",
+                    response.text[:500],
+                )
+                raise RuntimeError(
+                    f"Cloudinary delivery failed "
+                    f"({response.status_code}): {error_detail}"
+            )
+
+            time.sleep(delay)
+            delay = min(delay + 2, 10)
+
+        if download_response is None:
+            raise TimeoutError(
+                "Cloudinary enhancement is still processing after 90 seconds."
+            )
 
         content_type = download_response.headers.get(
             "content-type", ""
