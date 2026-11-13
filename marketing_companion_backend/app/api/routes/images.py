@@ -10,6 +10,10 @@ from app.core.config import get_settings
 from app.dependencies.auth import AuthenticatedContext, get_current_user
 from app.services.image_enhancement import get_image_enhancement_provider
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/images", tags=["images"])
 
 
@@ -241,6 +245,11 @@ def enhance_image(
             raise ValueError("The provider returned an invalid result.")
 
     except Exception as exc:
+        logger.exception(
+            "Image enhancement failed for image_id=%s",
+            image["id"],
+        )
+
         try:
             update_image_record(
                 base_url,
@@ -249,7 +258,7 @@ def enhance_image(
                 {"enhancement_status": "failed"},
             )
         except Exception:
-            pass
+            logger.exception("Could not update image enhancement status.")
 
         if isinstance(exc, HTTPException):
             raise exc
