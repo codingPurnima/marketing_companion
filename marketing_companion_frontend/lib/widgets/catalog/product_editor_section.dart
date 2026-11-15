@@ -61,6 +61,7 @@ class _ProductEditorSectionState extends State<ProductEditorSection> {
           maxLines: 5,
           decoration: const InputDecoration(labelText: 'Description'),
         ),
+        const SizedBox(height: 8),
         DropdownButtonFormField<String>(
           initialValue: widget.categoryController.text.isNotEmpty
               ? widget.categoryController.text
