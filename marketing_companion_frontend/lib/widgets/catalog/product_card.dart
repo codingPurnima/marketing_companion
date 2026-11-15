@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 
 class ProductCard extends StatelessWidget {
@@ -10,6 +9,7 @@ class ProductCard extends StatelessWidget {
   final bool isVoiceMatched;
   final bool loading;
   final bool canEdit;
+  final String? selectedImage;
 
   final VoidCallback onEdit;
   final VoidCallback onPublish;
@@ -17,6 +17,7 @@ class ProductCard extends StatelessWidget {
   final VoidCallback onShare;
   final VoidCallback onRequestEnhancement;
   final void Function(String selection) onSelectImage;
+  final Map<String, dynamic>? comparison;
 
   const ProductCard({
     super.key,
@@ -34,6 +35,8 @@ class ProductCard extends StatelessWidget {
     required this.onShare,
     required this.onRequestEnhancement,
     required this.onSelectImage,
+    required this.comparison,
+    required this.selectedImage,
   });
 
   @override
@@ -67,9 +70,7 @@ class ProductCard extends StatelessWidget {
                   fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) => const SizedBox(
                     height: 80,
-                    child: Center(
-                      child: Text('Image preview unavailable'),
-                    ),
+                    child: Center(child: Text('Image preview unavailable')),
                   ),
                 ),
               ),
@@ -108,12 +109,11 @@ class ProductCard extends StatelessWidget {
                   label: const Text('Share product'),
                 ),
             ],
-            if (imageUrl == null)
-              const Text('No image attached'),
-            if (enhancedUrl != null) ...[
+            if (imageUrl == null) const Text('No image attached'),
+            if (enhancedUrl != null && selectedImage != 'enhanced') ...[
               const SizedBox(height: 12),
               const Text(
-                'Enhanced image',
+                'Enhanced image preview',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 6),
@@ -124,29 +124,20 @@ class ProductCard extends StatelessWidget {
                   height: 180,
                   width: double.infinity,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => const SizedBox(
-                    height: 80,
-                    child: Center(
-                      child: Text(
-                        'Enhanced image preview unavailable',
-                      ),
-                    ),
-                  ),
                 ),
               ),
             ],
             if (enhancementStatus == 'processing')
               const Text('Image enhancement is processing.'),
             if (enhancementStatus == 'failed')
-              const Text(
-                'Image enhancement failed. You can try again.',
-              ),
-            if (enhancementStatus == 'completed' &&
-                enhancedUrl == null)
+              const Text('Image enhancement failed. You can try again.'),
+            if (enhancementStatus == 'completed' && enhancedUrl == null)
               const Text(
                 'Enhanced image is ready, but its preview could not be loaded.',
               ),
-            if (enhancedUrl != null && productId != null) ...[
+            if (enhancedUrl != null &&
+                productId != null &&
+                (comparison?['selected_image']?.toString() != 'enhanced')) ...[
               const SizedBox(height: 8),
               const Text(
                 'Choose the image for your catalogue:',
