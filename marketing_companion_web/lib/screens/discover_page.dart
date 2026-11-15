@@ -141,6 +141,102 @@ class _DiscoverPageState extends State<DiscoverPage> {
     return category[0].toUpperCase() + category.substring(1);
   }
 
+  void _showInstallComingSoon(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('App download link coming soon!'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  Widget _buildInstallAppBanner(BuildContext context) {
+    final isMobile = MediaQuery.sizeOf(context).width < 650;
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 1100),
+        child: Container(
+          width: double.infinity,
+          margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: AppColors.primaryContainer,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.primaryMuted.withAlpha(60)),
+          ),
+          child: Flex(
+            direction: isMobile ? Axis.vertical : Axis.horizontal,
+            crossAxisAlignment: isMobile
+                ? CrossAxisAlignment.start
+                : CrossAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.storefront_rounded,
+                size: 36,
+                color: AppColors.primary,
+              ),
+              const SizedBox(width: 16),
+              Flexible(
+                flex: isMobile ? 0 : 1,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Are you an artisan?',
+                      style: AppTextStyles.headingSmall,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Create your digital catalog, enhance product '
+                      'photos, and showcase your handcrafted products '
+                      'to more customers with our mobile app.',
+                      style: AppTextStyles.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+              Flexible(
+                flex: isMobile ? 0 : 1,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Are you an artisan?',
+                      style: AppTextStyles.headingSmall,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Create your digital catalog, enhance product '
+                      'photos, and showcase your handcrafted products '
+                      'to more customers with our mobile app.',
+                      style: AppTextStyles.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(width: isMobile ? 0 : 20),
+              if (isMobile) const SizedBox(height: 16),
+              FilledButton.icon(
+                onPressed: () => _showInstallComingSoon(context),
+                icon: const Icon(Icons.download_rounded),
+                label: const Text('Get the app'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 14,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.sizeOf(context).width;
@@ -157,6 +253,8 @@ class _DiscoverPageState extends State<DiscoverPage> {
 
           // Category filters
           _buildCategoryFilters(),
+
+          _buildInstallAppBanner(context),
 
           const SizedBox(height: 8),
 
@@ -212,6 +310,26 @@ class _DiscoverPageState extends State<DiscoverPage> {
         ],
       ),
       actions: [
+        if (!isMobile)
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: FilledButton.icon(
+              onPressed: () => _showInstallComingSoon(context),
+              icon: const Icon(Icons.download_rounded, size: 18),
+              label: const Text('Get the app'),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          )
+        else
+          IconButton(
+            tooltip: 'Get the app',
+            onPressed: () => _showInstallComingSoon(context),
+            icon: const Icon(Icons.download_rounded),
+          ),
+
         TextButton.icon(
           onPressed: () {
             Navigator.push(
@@ -311,9 +429,7 @@ class _DiscoverPageState extends State<DiscoverPage> {
       future: productsFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
-            child: CircularProgressIndicator(),
-          );
+          return const Center(child: CircularProgressIndicator());
         }
 
         if (snapshot.hasError) {
@@ -451,7 +567,9 @@ class _CategoryChip extends StatelessWidget {
         labelStyle: TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w500,
-          color: selected ? AppColors.chipSelectedFg : AppColors.chipUnselectedFg,
+          color: selected
+              ? AppColors.chipSelectedFg
+              : AppColors.chipUnselectedFg,
         ),
         backgroundColor: AppColors.chipUnselected,
         selectedColor: AppColors.chipSelected,
