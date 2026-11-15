@@ -196,25 +196,6 @@ class _DiscoverPageState extends State<DiscoverPage> {
                   ],
                 ),
               ),
-              Flexible(
-                flex: isMobile ? 0 : 1,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Are you an artisan?',
-                      style: AppTextStyles.headingSmall,
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Create your digital catalog, enhance product '
-                      'photos, and showcase your handcrafted products '
-                      'to more customers with our mobile app.',
-                      style: AppTextStyles.bodySmall,
-                    ),
-                  ],
-                ),
-              ),
               SizedBox(width: isMobile ? 0 : 20),
               if (isMobile) const SizedBox(height: 16),
               FilledButton.icon(
