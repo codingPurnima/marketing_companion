@@ -278,10 +278,19 @@ class _DiscoverPageState extends State<DiscoverPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  'Artisan Marketplace',
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.navBrand,
+                InkWell(
+                  onTap: () {
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(
+                        builder: (context) => const DiscoverPage(),
+                      ),
+                      (route) => false,
+                    );
+                  },
+                  child: const Text(
+                    'Artisan Marketplace',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                 ),
                 if (!isMobile)
                   Text(
