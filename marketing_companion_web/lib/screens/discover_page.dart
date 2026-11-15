@@ -235,12 +235,18 @@ class _DiscoverPageState extends State<DiscoverPage> {
           // Category filters
           _buildCategoryFilters(),
 
-          _buildInstallAppBanner(context),
-
-          const SizedBox(height: 8),
-
           // Product grid
-          Expanded(child: _buildProductGrid()),
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildInstallAppBanner(context),
+                  _buildProductGrid(),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -514,6 +520,8 @@ class _DiscoverPageState extends State<DiscoverPage> {
             final spacing = width < 500 ? 12.0 : 20.0;
 
             return GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
               padding: EdgeInsets.all(padding),
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: columns,
