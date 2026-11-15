@@ -97,6 +97,8 @@ class ProductListSection extends StatelessWidget {
                   onSelectImage(productId, selection);
                 }
               },
+              comparison: comparison,
+              selectedImage: comparison?['selected_image']?.toString(),
             );
           }),
       ],
