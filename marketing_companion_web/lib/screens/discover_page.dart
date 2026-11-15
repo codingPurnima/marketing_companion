@@ -370,35 +370,51 @@ class _DiscoverPageState extends State<DiscoverPage> {
   }
 
   Widget _buildCategoryFilters() {
+    final chips = [
+      _CategoryChip(
+        label: 'All',
+        selected: selectedCategory == null,
+        onSelected: (_) {
+          setState(() => selectedCategory = null);
+          applyFilters();
+        },
+      ),
+      ...categories.map(
+        (category) => _CategoryChip(
+          label: formatCategory(category),
+          selected: selectedCategory == category,
+          onSelected: (_) {
+            setState(() => selectedCategory = category);
+            applyFilters();
+          },
+        ),
+      ),
+    ];
+
     return Container(
       color: AppColors.surfaceWhite,
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 1100),
-          child: Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _CategoryChip(
-                label: 'All',
-                selected: selectedCategory == null,
-                onSelected: (_) {
-                  setState(() => selectedCategory = null);
-                  applyFilters();
-                },
-              ),
-              ...categories.map(
-                (category) => _CategoryChip(
-                  label: formatCategory(category),
-                  selected: selectedCategory == category,
-                  onSelected: (_) {
-                    setState(() => selectedCategory = category);
-                    applyFilters();
-                  },
-                ),
-              ),
-            ],
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              if (constraints.maxWidth < 650) {
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: chips.map((chip) {
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: chip,
+                      );
+                    }).toList(),
+                  ),
+                );
+              }
+
+              return Wrap(spacing: 8, runSpacing: 8, children: chips);
+            },
           ),
         ),
       ),
