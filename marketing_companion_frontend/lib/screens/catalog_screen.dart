@@ -343,9 +343,14 @@ class _CatalogScreenState extends State<CatalogScreen> {
           final comparisonData = Map<String, dynamic>.from(comparison);
           comparisons[productId] = comparisonData;
 
-          final originalUrl = comparisonData['original_url'];
-          if (originalUrl != null) {
-            urls[productId] = originalUrl.toString();
+          final selectedImage = comparisonData['selected_image']?.toString();
+
+          final selectedUrl = selectedImage == 'enhanced'
+              ? comparisonData['enhanced_url']
+              : comparisonData['original_url'];
+
+          if (selectedUrl != null) {
+            urls[productId] = selectedUrl.toString();
           }
         }
       } catch (e) {
