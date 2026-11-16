@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import '../widgets/catalog/voice_assistant_section.dart';
 
@@ -15,12 +14,12 @@ class HomeScreen extends StatelessWidget {
   final VoidCallback onSignOut;
 
   final TextEditingController voiceInputController;
-final bool speechAvailable;
-final bool isListening;
-final String speechMessage;
-final VoidCallback onStartListening;
-final VoidCallback onStopListening;
-final VoidCallback onVoiceCommand;
+  final bool speechAvailable;
+  final bool isListening;
+  final String speechMessage;
+  final VoidCallback onStartListening;
+  final VoidCallback onStopListening;
+  final VoidCallback onVoiceCommand;
 
   const HomeScreen({
     super.key,
@@ -141,97 +140,86 @@ final VoidCallback onVoiceCommand;
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(12, 8, 12, 100),
                 sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final product = Map<String, dynamic>.from(
-                        products[index] as Map,
-                      );
+                  delegate: SliverChildBuilderDelegate((context, index) {
+                    final product = Map<String, dynamic>.from(
+                      products[index] as Map,
+                    );
 
-                      final productId = product['id']?.toString();
-                      final title =
-                          product['title']?.toString() ?? 'Untitled product';
-                      final category =
-                          product['category']?.toString() ?? 'Other';
-                      final status =
-                          product['status']?.toString() ?? 'draft';
-                      final price =
-                          product['price'] ?? product['price_inr'];
+                    final productId = product['id']?.toString();
+                    final title =
+                        product['title']?.toString() ?? 'Untitled product';
+                    final category = product['category']?.toString() ?? 'Other';
+                    final status = product['status']?.toString() ?? 'draft';
+                    final price = product['price'] ?? product['price_inr'];
 
-                      final imageUrl = productId == null
-                          ? null
-                          : imageUrls[productId];
+                    final imageUrl = productId == null
+                        ? null
+                        : imageUrls[productId];
 
-                      return Card(
-                        margin: const EdgeInsets.symmetric(
-                          horizontal: 4,
-                          vertical: 5,
+                    return Card(
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 5,
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.all(12),
+                        onTap: loading ? null : () => onProductTap(product),
+                        leading: SizedBox(
+                          width: 64,
+                          height: 64,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: imageUrl != null
+                                ? Image.network(
+                                    imageUrl,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) =>
+                                        _imagePlaceholder(context),
+                                  )
+                                : _imagePlaceholder(context),
+                          ),
                         ),
-                        clipBehavior: Clip.antiAlias,
-                        child: ListTile(
-                          contentPadding: const EdgeInsets.all(12),
-                          onTap: loading
-                              ? null
-                              : () => onProductTap(product),
-                          leading: SizedBox(
-                            width: 64,
-                            height: 64,
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: imageUrl != null
-                                  ? Image.network(
-                                      imageUrl,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) =>
-                                          _imagePlaceholder(context),
-                                    )
-                                  : _imagePlaceholder(context),
-                            ),
-                          ),
-                          title: Text(
-                            title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          subtitle: Padding(
-                            padding: const EdgeInsets.only(top: 6),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  '$category · ${price == null ? 'Price not set' : '₹$price'}',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 6),
-                                _statusLabel(context, status),
-                              ],
-                            ),
-                          ),
-                          trailing: const Icon(Icons.chevron_right),
+                        title: Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
-                      );
-                    },
-                    childCount: products.length,
-                  ),
+                        subtitle: Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '$category · ${price == null ? 'Price not set' : '₹$price'}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 6),
+                              _statusLabel(context, status),
+                            ],
+                          ),
+                        ),
+                        trailing: const Icon(Icons.chevron_right),
+                      ),
+                    );
+                  }, childCount: products.length),
                 ),
               ),
           ],
         ),
       ),
       bottomNavigationBar: VoiceAssistantSection(
-  controller: voiceInputController,
-  loading: loading,
-  speechAvailable: speechAvailable,
-  isListening: isListening,
-  speechMessage: speechMessage,
-  onStartListening: onStartListening,
-  onStopListening: onStopListening,
-  onSubmit: onVoiceCommand,
-),
-    
+        controller: voiceInputController,
+        loading: loading,
+        speechAvailable: speechAvailable,
+        isListening: isListening,
+        speechMessage: speechMessage,
+        onStartListening: onStartListening,
+        onStopListening: onStopListening,
+        onSubmit: onVoiceCommand,
+      ),
     );
   }
 
@@ -256,18 +244,12 @@ final VoidCallback onVoiceCommand;
     return Align(
       alignment: Alignment.centerLeft,
       child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 9,
-          vertical: 3,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.secondaryContainer,
           borderRadius: BorderRadius.circular(20),
         ),
-        child: Text(
-          label,
-          style: Theme.of(context).textTheme.labelSmall,
-        ),
+        child: Text(label, style: Theme.of(context).textTheme.labelSmall),
       ),
     );
   }
