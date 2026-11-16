@@ -1,4 +1,7 @@
 import 'dart:typed_data';
+import 'package:marketing_companion_frontend/utils/handle_voice_cmds.dart';
+import '../utils/catalog_actions.dart';
+
 import '../services/api_service.dart';
 import 'package:flutter/material.dart';
 
@@ -14,7 +17,6 @@ import '../widgets/catalog/catalog_generation_section.dart';
 import '../widgets/catalog/product_editor_section.dart';
 import '../services/catalog_service.dart';
 import '../services/voice_command_handler.dart';
-import '../widgets/catalog/voice_command_confirmation_dialog.dart';
 import '../controllers/voice_assistant_controller.dart';
 import '../widgets/catalog/voice_assistant_section.dart';
 
@@ -131,286 +133,137 @@ class _CatalogScreenState extends State<CatalogScreen> {
   }
 
   Future<void> generateCatalog() async {
-    if (inputController.text.trim().isEmpty) {
-      setState(() {
-        message = 'Please describe your product first.';
-      });
-      return;
-    }
-
-    await runAction(() async {
-      final result = await catalogService.generateCatalog(
-        inputController.text.trim(),
-      );
-
-      final draft = Map<String, dynamic>.from(result as Map);
-
-      titleController.text = draft['title']?.toString() ?? '';
-      descriptionController.text = draft['description']?.toString() ?? '';
-      categoryController.text = draft['category']?.toString() ?? 'other';
-      priceController.text = draft['price_inr']?.toString() ?? '';
-
-      setState(() => generatedDraft = draft);
-      message = 'Catalog generated. Review the fields before saving.';
-      await speechService.speakCatalogSummary(draft);
-    });
+    await generateCatalogDraft(
+      catalogService: catalogService,
+      inputController: inputController,
+      titleController: titleController,
+      descriptionController: descriptionController,
+      categoryController: categoryController,
+      priceController: priceController,
+      runAction: runAction,
+      speechService: speechService,
+      updateGeneratedDraft: (draft) {
+        if (!mounted) return;
+        setState(() => generatedDraft = draft);
+      },
+      updateMessage: (messageText) {
+        if (!mounted) return;
+        setState(() => message = messageText);
+      },
+    );
   }
 
   Future<void> pickProductImage() async {
-    try {
-      final image = await imageService.pickImage();
-
-      if (image == null) return;
-
-      final bytes = await imageService.readImageBytes(image);
-
-      if (!mounted) return;
-
-      setState(() {
-        selectedImage = image;
-        selectedImageBytes = bytes;
-        message = 'Image selected. Save the draft to upload it.';
-      });
-    } catch (e) {
-      if (!mounted) return;
-
-      setState(() {
-        message = 'Could not select the image: $e';
-      });
-    }
+    await pickCatalogProductImage(
+      imageService: imageService,
+      updateSelectedImage: (image, bytes, messageText) {
+        if (!mounted) return;
+        setState(() {
+          selectedImage = image;
+          selectedImageBytes = bytes;
+          message = messageText;
+        });
+      },
+      updateMessage: (messageText) {
+        if (!mounted) return;
+        setState(() => message = messageText);
+      },
+    );
   }
 
   Future<void> uploadProductImage(String productId) async {
-    final image = selectedImage;
-    final bytes = selectedImageBytes;
-
-    if (image == null || bytes == null) {
-      throw Exception('Please select a product image first.');
-    }
-
-    await imageService.uploadProductImage(
+    await uploadCatalogProductImage(
+      imageService: imageService,
+      selectedImage: selectedImage,
+      selectedImageBytes: selectedImageBytes,
       productId: productId,
-      image: image,
-      bytes: bytes,
-      title: titleController.text.trim(),
+      titleController: titleController,
     );
   }
 
   Future<void> saveDraft() async {
-    await runAction(() async {
-      final title = titleController.text.trim();
-      final description = descriptionController.text.trim();
-      final category = categoryController.text.trim();
-      final priceText = priceController.text.trim();
-
-      if (title.isEmpty || description.isEmpty) {
-        throw Exception('Title and description are required.');
-      }
-
-      const categories = {
-        'pottery',
-        'textiles',
-        'weaving',
-        'woodwork',
-        'metalwork',
-        'jewelry',
-        'paintings',
-        'other',
-      };
-
-      if (!categories.contains(category)) {
-        throw Exception('Choose a valid catalog category.');
-      }
-
-      final double? price = priceText.isEmpty
-          ? null
-          : double.tryParse(priceText);
-
-      if (priceText.isNotEmpty && (price == null || price < 0)) {
-        throw Exception('Enter a valid non-negative price.');
-      }
-
-      if (editingProductId != null) {
-        await catalogService.updateDraft(
-          productId: editingProductId!,
-          title: title,
-          description: description,
-          category: category,
-          price: price,
-        );
-
+    await saveCatalogDraft(
+      catalogService: catalogService,
+      imageService: imageService,
+      inputController: inputController,
+      titleController: titleController,
+      descriptionController: descriptionController,
+      categoryController: categoryController,
+      priceController: priceController,
+      runAction: runAction,
+      loadDrafts: loadDrafts,
+      updateMessage: (messageText) {
         if (!mounted) return;
-
-        setState(() {
-          editingProductId = null;
-
-          titleController.clear();
-          descriptionController.clear();
-          categoryController.text = 'other';
-          priceController.clear();
-
-          message = 'Product updated successfully.';
-        });
-
-        await loadDrafts();
-        return;
-      }
-
-      var productId = savedProductId;
-
-      if (productId == null) {
-        final result = await catalogService.createDraft(
-          title: title,
-          description: description,
-          category: category,
-          materials: generatedDraft?['materials'] ?? [],
-          tags: generatedDraft?['tags'] ?? [],
-          price: price,
-        );
-
-        if (result is! Map || result['id'] == null) {
-          throw Exception(
-            'The draft response did not contain a product ID. '
-            'Check the backend response before retrying.',
-          );
-        }
-
-        productId = result['id'].toString();
-
+        setState(() => message = messageText);
+      },
+      updateState: (updater) {
         if (!mounted) return;
-        setState(() => savedProductId = productId);
-      }
-
-      if (selectedImage != null && selectedImageBytes != null) {
-        await uploadProductImage(productId);
-
-        if (!mounted) return;
-
-        setState(() {
-          savedProductId = null;
-          editingProductId = null;
-
-          inputController.clear();
-          titleController.clear();
-          descriptionController.clear();
-          categoryController.text = 'other';
-          priceController.clear();
-
-          generatedDraft = null;
-          selectedImage = null;
-          selectedImageBytes = null;
-
-          message = 'Draft saved and image uploaded successfully.';
-        });
-      } else {
-        if (!mounted) return;
-
-        setState(() {
-          savedProductId = null;
-          editingProductId = null;
-
-          inputController.clear();
-          titleController.clear();
-          descriptionController.clear();
-          categoryController.text = 'other';
-          priceController.clear();
-
-          generatedDraft = null;
-
-          message = 'Draft saved successfully.';
-        });
-      }
-
-      await loadDrafts();
-    });
+        setState(updater);
+      },
+      uploadProductImage: uploadProductImage,
+      editingProductId: editingProductId,
+      savedProductId: savedProductId,
+      selectedImage: selectedImage,
+      selectedImageBytes: selectedImageBytes,
+      generatedDraft: generatedDraft,
+      setSavedProductId: (value) => savedProductId = value,
+      setEditingProductId: (value) => editingProductId = value,
+      setSelectedImage: (value) => selectedImage = value,
+      setSelectedImageBytes: (value) => selectedImageBytes = value,
+      setGeneratedDraft: (value) => generatedDraft = value,
+    );
   }
 
   Future<void> loadDrafts() async {
-    final result = await catalogService.getDrafts();
-
-    final urls = <String, String>{};
-    final paths = <String, String>{};
-    final imageIds = <String, String>{};
-    final comparisons = <String, Map<String, dynamic>>{};
-
-    for (final item in result) {
-      if (item is! Map || item['id'] == null) continue;
-
-      final productId = item['id'].toString();
-
-      try {
-        final imageRows = await imageService.getProductImages(productId);
-
-        if (imageRows.isEmpty) continue;
-
-        final image = imageRows.first;
-        final imageId = image['id'].toString();
-        final path = image['storage_path'].toString();
-
-        imageIds[productId] = imageId;
-        paths[productId] = path;
-
-        final comparison = await imageService.getImageComparison(imageId);
-
-        if (comparison is Map) {
-          final comparisonData = Map<String, dynamic>.from(comparison);
-          comparisons[productId] = comparisonData;
-
-          final selectedImage = comparisonData['selected_image']?.toString();
-
-          final selectedUrl = selectedImage == 'enhanced'
-              ? comparisonData['enhanced_url']
-              : comparisonData['original_url'];
-
-          if (selectedUrl != null) {
-            urls[productId] = selectedUrl.toString();
-          }
-        }
-      } catch (e) {
-        debugPrint('Could not load image for product $productId: $e');
-      }
-    }
-    await loadArchivedProducts();
-
-    if (!mounted) return;
-
-    setState(() {
-      drafts = result;
-      draftImageUrls = urls;
-      draftImagePaths = paths;
-      draftImageIds = imageIds;
-      draftImageComparisons = comparisons;
-    });
+    await loadCatalogDrafts(
+      catalogService: catalogService,
+      imageService: imageService,
+      loadArchivedProducts: loadArchivedProducts,
+      updateCatalogState:
+          ({
+            required List<dynamic> drafts,
+            required Map<String, String> draftImageUrls,
+            required Map<String, String> draftImagePaths,
+            required Map<String, String> draftImageIds,
+            required Map<String, Map<String, dynamic>> draftImageComparisons,
+          }) {
+            if (!mounted) return;
+            setState(() {
+              this.drafts = drafts;
+              this.draftImageUrls = draftImageUrls;
+              this.draftImagePaths = draftImagePaths;
+              this.draftImageIds = draftImageIds;
+              this.draftImageComparisons = draftImageComparisons;
+            });
+          },
+    );
   }
 
   Future<void> updatePublication(String productId, bool publish) async {
-    await runAction(() async {
-      await catalogService.updatePublication(
-        productId: productId,
-        publish: publish,
-      );
-
-      message = publish
-          ? 'Product published successfully.'
-          : 'Product unpublished successfully.';
-
-      await loadDrafts();
-    });
+    await updateCatalogPublication(
+      catalogService: catalogService,
+      runAction: runAction,
+      loadDrafts: loadDrafts,
+      updateMessage: (messageText) {
+        if (!mounted) return;
+        setState(() => message = messageText);
+      },
+      productId: productId,
+      publish: publish,
+    );
   }
 
   Future<void> requestImageEnhancement(String storagePath) async {
-    await runAction(() async {
-      final result = await imageService.requestEnhancement(storagePath);
-
-      if (result is! Map) {
-        throw Exception('Unexpected enhancement response.');
-      }
-
-      message =
-          result['message']?.toString() ?? 'Enhancement request completed.';
-
-      await loadDrafts();
-    });
+    await requestCatalogImageEnhancement(
+      imageService: imageService,
+      runAction: runAction,
+      loadDrafts: loadDrafts,
+      updateMessage: (messageText) {
+        if (!mounted) return;
+        setState(() => message = messageText);
+      },
+      storagePath: storagePath,
+    );
   }
 
   Future<void> signOut() async {
@@ -418,51 +271,36 @@ class _CatalogScreenState extends State<CatalogScreen> {
   }
 
   Future<void> loadArchivedProducts() async {
-    try {
-      final response = await catalogService.getArchivedProducts();
-      if (!mounted) return;
-
-      setState(() {
-        archivedProducts = response;
-      });
-    } catch (e) {
-      if (!mounted) return;
-
-      setState(() {
-        message = 'Unable to load archived products: $e';
-      });
-    }
+    await loadArchivedCatalogProducts(
+      catalogService: catalogService,
+      updateArchivedProducts: (response) {
+        if (!mounted) return;
+        setState(() => archivedProducts = response);
+      },
+      updateMessage: (messageText) {
+        if (!mounted) return;
+        setState(() => message = messageText);
+      },
+    );
   }
 
   Future<void> publishArchivedProduct(String productId) async {
-    setState(() {
-      loading = true;
-      message = '';
-    });
-
-    try {
-      await catalogService.republishArchivedProduct(productId);
-
-      if (!mounted) return;
-
-      setState(() {
-        message = 'Product republished successfully.';
-      });
-
-      await loadDrafts();
-    } catch (e) {
-      if (!mounted) return;
-
-      setState(() {
-        message = 'Unable to republish product: $e';
-      });
-    } finally {
-      if (mounted) {
+    await republishArchivedCatalogProduct(
+      catalogService: catalogService,
+      loadDrafts: loadDrafts,
+      updateLoadingState: (loadingState, messageText) {
+        if (!mounted) return;
         setState(() {
-          loading = false;
+          loading = loadingState;
+          message = messageText;
         });
-      }
-    }
+      },
+      updateMessage: (messageText) {
+        if (!mounted) return;
+        setState(() => message = messageText);
+      },
+      productId: productId,
+    );
   }
 
   @override
@@ -491,269 +329,29 @@ class _CatalogScreenState extends State<CatalogScreen> {
   }
 
   Future<void> startListening() async {
-    if (!speechAvailable || loading || isListening) return;
-
-    voiceInputController.clear();
-
-    await widget.voiceAssistantController.startListening(
-      onResult: (recognizedWords) {
+    await manageVoiceListening(
+      speechAvailable: speechAvailable,
+      loading: loading,
+      isListening: isListening,
+      voiceInputController: voiceInputController,
+      startListening:
+          ({required void Function(String recognizedWords) onResult}) => widget
+              .voiceAssistantController
+              .startListening(onResult: onResult),
+      stopListening: () => widget.voiceAssistantController.stopListening(),
+      onStop: handleVoiceCommand,
+      updateState: (fn) {
         if (!mounted) return;
-
-        setState(() {
-          voiceInputController.text = recognizedWords;
-          voiceInputController.selection = TextSelection.collapsed(
-            offset: voiceInputController.text.length,
-          );
-        });
+        setState(fn);
       },
     );
   }
 
   Future<void> stopListening() async {
-    await widget.voiceAssistantController.stopListening();
-
-    if (!mounted) return;
-
-    await handleVoiceCommand();
-  }
-
-  Future<void> handleVoiceCommand() async {
-    final voiceCommand = voiceCommandHandler.parse(
-      voiceInputController.text.trim(),
+    await stopVoiceListening(
+      stopListening: () => widget.voiceAssistantController.stopListening(),
+      onSubmit: handleVoiceCommand,
     );
-    if (voiceCommand.type == VoiceCommandType.unknown) {
-      setState(() {
-        message = 'I could not understand that command. Please try again.';
-      });
-      return;
-    }
-
-    voiceInputController.clear();
-
-    if (voiceCommand.type == VoiceCommandType.listProducts) {
-      await runAction(loadDrafts);
-
-      if (!mounted) return;
-
-      final response = drafts.isEmpty
-          ? 'You have no products in your catalog yet.'
-          : 'You have ${drafts.length} products in your catalog.';
-
-      await speechService.speak(response);
-      return;
-    }
-
-    if (voiceCommand.type == VoiceCommandType.saveDraft) {
-      if (currentView != CatalogView.editor) {
-        await speechService.speak(
-          'Please open Add Product or Edit Product before saving.',
-        );
-        return;
-      }
-
-      await saveDraft();
-
-      if (!mounted) return;
-
-      await speechService.speak(
-        message.contains('successfully')
-            ? message
-            : 'I could not save the product. $message',
-      );
-      return;
-    }
-
-    if (voiceCommand.type == VoiceCommandType.listArchived) {
-      setState(() {
-        currentView = CatalogView.home;
-        message = 'Loading archived products...';
-      });
-
-      await runAction(loadDrafts);
-
-      if (!mounted) return;
-
-      final count = archivedProducts.length;
-
-      final response = count == 0
-          ? 'You have no archived products.'
-          : 'You have $count archived products. They are displayed on your home screen.';
-
-      await speechService.speak(response);
-      return;
-    }
-
-    final productName = voiceCommand.productName;
-
-    final action = switch (voiceCommand.type) {
-      VoiceCommandType.find => 'find',
-      VoiceCommandType.edit => 'edit',
-      VoiceCommandType.republish => 'republish',
-      VoiceCommandType.publish => 'publish',
-      VoiceCommandType.archive => 'archive',
-      _ => null,
-    };
-
-    if (action == null || productName == null || productName.isEmpty) {
-      return;
-    }
-
-    // 3. Refresh products before searching
-    await runAction(loadDrafts);
-
-    if (!mounted) return;
-
-    // 4. Match product by name
-    final matches = voiceCommandHandler.findMatches(
-      productName: productName,
-      commandType: voiceCommand.type,
-      drafts: drafts,
-      archivedProducts: archivedProducts,
-    );
-    if (matches.isEmpty) {
-      message = 'No matching product found.';
-      setState(() {});
-
-      await speechService.speak(
-        'I could not find a product matching $productName.',
-      );
-      return;
-    }
-
-    if (voiceCommandHandler.hasAmbiguousMatches(matches)) {
-      final names = matches
-          .take(3)
-          .map((product) => product['title'].toString())
-          .join(', ');
-
-      message =
-          'Multiple products match: $names. '
-          'Please specify the product more clearly.';
-
-      setState(() {});
-
-      await speechService.speak(
-        'I found multiple matching products. '
-        'Please specify which product you mean.',
-      );
-      return;
-    }
-
-    final product = matches.first;
-    final productId = product['id'].toString();
-    final title = product['title']?.toString() ?? 'this product';
-    final status = product['status']?.toString();
-
-    // 5. Execute non-modifying commands
-    if (action == 'find') {
-      setState(() {
-        voiceMatchedProductId = productId;
-        message = 'Found product: $title';
-      });
-
-      await speechService.speak('I found $title.');
-      return;
-    }
-
-    if (action == 'edit') {
-      startEditingProduct(product);
-
-      setState(() {
-        voiceMatchedProductId = productId;
-        message = 'Loaded $title for editing.';
-      });
-
-      await speechService.speak(
-        'I have loaded $title. You can now edit its details.',
-      );
-      return;
-    }
-
-    // 6. Validate publication status
-    if (!voiceCommandHandler.canExecute(
-      commandType: voiceCommand.type,
-      status: status,
-    )) {
-      final response = switch (voiceCommand.type) {
-        VoiceCommandType.publish =>
-          '$title is not a draft. Only drafts can be published.',
-        VoiceCommandType.archive => '$title is not currently published.',
-        VoiceCommandType.republish => '$title is not archived.',
-        _ => 'This action cannot be performed on $title.',
-      };
-
-      message = response;
-      setState(() {});
-      await speechService.speak(response);
-      return;
-    }
-
-    // 7. Ask for explicit confirmation
-    final publish = action == 'publish' || action == 'republish';
-
-    final confirmed = await VoiceCommandConfirmationDialog.show(
-      context: context,
-      title: title,
-      publish: publish,
-    );
-
-    if (!mounted) return;
-
-    if (confirmed != true) {
-      message = 'Action cancelled.';
-      setState(() {});
-
-      await speechService.speak('Action cancelled.');
-      return;
-    }
-
-    // 8. Execute confirmed action
-    setState(() {
-      loading = true;
-      message = '';
-    });
-
-    try {
-      if (action == 'republish') {
-        await publishArchivedProduct(productId);
-      } else {
-        await catalogService.updatePublication(
-          productId: productId,
-          publish: publish,
-        );
-
-        await loadDrafts();
-      }
-
-      if (!mounted) return;
-
-      final response = action == 'republish'
-          ? '$title has been republished successfully.'
-          : publish
-          ? '$title has been published successfully.'
-          : '$title has been archived successfully.';
-
-      setState(() {
-        voiceMatchedProductId = productId;
-        message = response;
-      });
-
-      await speechService.speak(response);
-    } catch (e) {
-      if (!mounted) return;
-
-      setState(() {
-        message = 'Could not complete the action: $e';
-      });
-
-      await speechService.speak('Sorry, the action could not be completed.');
-    } finally {
-      if (mounted) {
-        setState(() {
-          loading = false;
-        });
-      }
-    }
   }
 
   Future<void> shareProduct(Map<String, dynamic> product) async {
@@ -784,39 +382,84 @@ class _CatalogScreenState extends State<CatalogScreen> {
   }
 
   void openAddProduct() {
-    setState(() {
-      currentView = CatalogView.editor;
-
-      editingProductId = null;
-      savedProductId = null;
-      generatedDraft = null;
-
-      inputController.clear();
-      titleController.clear();
-      descriptionController.clear();
-      categoryController.text = 'other';
-      priceController.clear();
-
-      selectedImage = null;
-      selectedImageBytes = null;
-
-      message = '';
-    });
+    applyCatalogNavigation(
+      isEditing: false,
+      editingProductId: editingProductId,
+      savedProductId: savedProductId,
+      generatedDraft: generatedDraft,
+      inputController: inputController,
+      titleController: titleController,
+      descriptionController: descriptionController,
+      categoryController: categoryController,
+      priceController: priceController,
+      updateView: (isEditorMode) {
+        if (!mounted) return;
+        setState(
+          () => currentView = isEditorMode
+              ? CatalogView.editor
+              : CatalogView.home,
+        );
+      },
+      setEditingProductId: (value) => editingProductId = value,
+      setSavedProductId: (value) => savedProductId = value,
+      setGeneratedDraft: (value) => generatedDraft = value,
+      setSelectedImage: (value) => selectedImage = value,
+      setSelectedImageBytes: (value) => selectedImageBytes = value,
+      updateMessage: (messageText) {
+        if (!mounted) return;
+        setState(() => message = messageText);
+      },
+      messageText: '',
+    );
   }
 
   void openProductEditor(Map<String, dynamic> product) {
     startEditingProduct(product);
 
-    setState(() {
-      currentView = CatalogView.editor;
-    });
+    applyCatalogNavigation(
+      isEditing: true,
+      editingProductId: editingProductId,
+      savedProductId: savedProductId,
+      generatedDraft: generatedDraft,
+      inputController: inputController,
+      titleController: titleController,
+      descriptionController: descriptionController,
+      categoryController: categoryController,
+      priceController: priceController,
+      updateView: (isEditorMode) {
+        if (!mounted) return;
+        setState(
+          () => currentView = isEditorMode
+              ? CatalogView.editor
+              : CatalogView.home,
+        );
+      },
+      setEditingProductId: (value) => editingProductId = value,
+      setSavedProductId: (value) => savedProductId = value,
+      setGeneratedDraft: (value) => generatedDraft = value,
+      setSelectedImage: (value) => selectedImage = value,
+      setSelectedImageBytes: (value) => selectedImageBytes = value,
+      updateMessage: (messageText) {
+        if (!mounted) return;
+        setState(() => message = messageText);
+      },
+      messageText: 'Editing product. Update the details and save.',
+    );
   }
 
   void returnHome() {
-    setState(() {
-      currentView = CatalogView.home;
-      message = '';
-    });
+    returnCatalogHome(
+      updateHomeView: () {
+        if (!mounted) return;
+        setState(() {
+          currentView = CatalogView.home;
+        });
+      },
+      updateMessage: (messageText) {
+        if (!mounted) return;
+        setState(() => message = messageText);
+      },
+    );
   }
 
   Future<void> startCatalogListening() async {
@@ -840,6 +483,40 @@ class _CatalogScreenState extends State<CatalogScreen> {
 
   Future<void> stopCatalogListening() async {
     await speechService.stopListening();
+  }
+
+  Future<void> handleVoiceCommand() async {
+    await processVoiceCommand(
+      context: context,
+      voiceInputController: voiceInputController,
+      voiceCommandHandler: voiceCommandHandler,
+      speechService: speechService,
+      runAction: runAction,
+      loadDrafts: loadDrafts,
+      saveDraft: saveDraft,
+      startEditingProduct: (product) async => startEditingProduct(product),
+      updatePublication: updatePublication,
+      publishArchivedProduct: publishArchivedProduct,
+      mounted: mounted,
+      isEditorMode: currentView == CatalogView.editor,
+      drafts: drafts,
+      archivedProducts: archivedProducts,
+      updateMessage: (messageText) {
+        if (!mounted) return;
+        setState(() => message = messageText);
+      },
+      updateVoiceMatchedProductId: (productId) {
+        if (!mounted) return;
+        setState(() => voiceMatchedProductId = productId);
+      },
+      goHome: () {
+        if (!mounted) return;
+        setState(() {
+          currentView = CatalogView.home;
+          message = '';
+        });
+      },
+    );
   }
 
   @override
