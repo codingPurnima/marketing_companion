@@ -544,21 +544,40 @@ class _CatalogScreenState extends State<CatalogScreen> {
     }
 
     if (voiceCommand.type == VoiceCommandType.saveDraft) {
+      if (currentView != CatalogView.editor) {
+        await speechService.speak(
+          'Please open Add Product or Edit Product before saving.',
+        );
+        return;
+      }
+
+      await saveDraft();
+
+      if (!mounted) return;
+
+      await speechService.speak(
+        message.contains('successfully')
+            ? message
+            : 'I could not save the product. $message',
+      );
       return;
     }
 
     if (voiceCommand.type == VoiceCommandType.listArchived) {
-      message = 'Loading archived products...';
-      setState(() {});
+      setState(() {
+        currentView = CatalogView.home;
+        message = 'Loading archived products...';
+      });
 
-      await runAction(loadArchivedProducts);
+      await runAction(loadDrafts);
 
       if (!mounted) return;
 
       final count = archivedProducts.length;
+
       final response = count == 0
           ? 'You have no archived products.'
-          : 'You have $count archived products. They are now displayed on the screen.';
+          : 'You have $count archived products. They are displayed on your home screen.';
 
       await speechService.speak(response);
       return;
@@ -863,6 +882,8 @@ class _CatalogScreenState extends State<CatalogScreen> {
           );
         },
         onSignOut: signOut,
+        archivedProducts: archivedProducts,
+        onRepublishArchived: publishArchivedProduct,
       );
     }
 
@@ -878,17 +899,19 @@ class _CatalogScreenState extends State<CatalogScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          CatalogGenerationSection(
-            inputController: inputController,
-            loading: loading,
-            speechAvailable: speechAvailable,
-            isListening: isListening,
-            speechMessage: speechMessage,
-            onGenerate: generateCatalog,
-            onStartListening: startCatalogListening,
-            onStopListening: stopCatalogListening,
-          ),
-          const Divider(height: 32),
+          if (editingProductId == null) ...[
+            CatalogGenerationSection(
+              inputController: inputController,
+              loading: loading,
+              speechAvailable: speechAvailable,
+              isListening: isListening,
+              speechMessage: speechMessage,
+              onGenerate: generateCatalog,
+              onStartListening: startCatalogListening,
+              onStopListening: stopCatalogListening,
+            ),
+            const Divider(height: 32),
+          ],
 
           ProductEditorSection(
             titleController: titleController,
