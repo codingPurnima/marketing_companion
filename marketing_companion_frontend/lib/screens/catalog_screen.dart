@@ -12,14 +12,19 @@ import '../services/speech_service.dart';
 import '../services/voice_command_service.dart';
 import '../widgets/catalog/catalog_generation_section.dart';
 import '../widgets/catalog/product_editor_section.dart';
-import '../widgets/catalog/product_list_section.dart';
-import '../widgets/catalog/archived_products_section.dart';
 import '../services/catalog_service.dart';
 import '../services/voice_command_handler.dart';
 import '../widgets/catalog/voice_command_confirmation_dialog.dart';
+import '../controllers/voice_assistant_controller.dart';
+
+import 'home_screen.dart';
+
+enum CatalogView { home, editor }
 
 class CatalogScreen extends StatefulWidget {
-  const CatalogScreen({super.key});
+  final VoiceAssistantController voiceAssistantController;
+
+  const CatalogScreen({super.key, required this.voiceAssistantController});
 
   @override
   State<CatalogScreen> createState() => _CatalogScreenState();
@@ -31,12 +36,14 @@ class _CatalogScreenState extends State<CatalogScreen> {
   final descriptionController = TextEditingController();
   final categoryController = TextEditingController(text: 'other');
   final priceController = TextEditingController();
+  final voiceInputController = TextEditingController(); // Voice commands
 
   Map<String, String> draftImagePaths = {};
 
   late final ApiService apiService;
   late final ImageService imageService;
-  final SpeechService speechService = SpeechService();
+  SpeechService get speechService =>
+      widget.voiceAssistantController.speechService;
   late final VoiceCommandHandler voiceCommandHandler;
   late final CatalogService catalogService;
 
@@ -57,16 +64,21 @@ class _CatalogScreenState extends State<CatalogScreen> {
 
   String? editingProductId;
 
-  bool speechAvailable = false;
-  bool isListening = false;
-  String speechMessage = '';
-
   List<dynamic> archivedProducts = [];
 
   String? voiceMatchedProductId;
 
+  bool get speechAvailable => widget.voiceAssistantController.speechAvailable;
+
+  bool get isListening => widget.voiceAssistantController.isListening;
+
+  String get speechMessage => widget.voiceAssistantController.speechMessage;
+
+  CatalogView currentView = CatalogView.home;
+
   void startEditingProduct(Map<String, dynamic> product) {
     setState(() {
+      currentView = CatalogView.editor;
       editingProductId = product['id'].toString();
 
       titleController.text = product['title']?.toString() ?? '';
@@ -464,56 +476,32 @@ class _CatalogScreenState extends State<CatalogScreen> {
     voiceCommandHandler = VoiceCommandHandler(
       commandService: VoiceCommandService(),
     );
-    initializeSpeech();
-    speechService.initializeTts();
+    widget.voiceAssistantController.addListener(_handleVoiceAssistantChanged);
+
+    widget.voiceAssistantController.initialize();
+
+    loadDrafts();
   }
 
-  Future<void> initializeSpeech() async {
-    final available = await speechService.initializeSpeech(
-      onStatus: (status) {
-        if (!mounted) return;
-
-        setState(() {
-          isListening = status == 'listening';
-        });
-      },
-      onError: (error) {
-        if (!mounted) return;
-
-        setState(() {
-          isListening = false;
-          speechMessage = error;
-        });
-      },
-    );
-
-    if (!mounted) return;
-
-    setState(() {
-      speechAvailable = available;
-      speechMessage = available
-          ? 'Voice input is ready.'
-          : 'Speech recognition is unavailable on this device.';
-    });
+  void _handleVoiceAssistantChanged() {
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   Future<void> startListening() async {
-    if (!speechAvailable || loading) return;
+    if (!speechAvailable || loading || isListening) return;
 
-    setState(() {
-      speechMessage = 'Listening...';
-      voiceMatchedProductId = null;
-      inputController.clear();
-    });
+    voiceInputController.clear();
 
-    await speechService.startListening(
+    await widget.voiceAssistantController.startListening(
       onResult: (recognizedWords) {
         if (!mounted) return;
 
         setState(() {
-          inputController.text = recognizedWords;
-          inputController.selection = TextSelection.collapsed(
-            offset: inputController.text.length,
+          voiceInputController.text = recognizedWords;
+          voiceInputController.selection = TextSelection.collapsed(
+            offset: voiceInputController.text.length,
           );
         });
       },
@@ -521,22 +509,25 @@ class _CatalogScreenState extends State<CatalogScreen> {
   }
 
   Future<void> stopListening() async {
-    await speechService.stopListening();
+    await widget.voiceAssistantController.stopListening();
 
     if (!mounted) return;
-
-    setState(() {
-      isListening = false;
-      speechMessage = 'Voice input captured. Review the transcription.';
-    });
 
     await handleVoiceCommand();
   }
 
   Future<void> handleVoiceCommand() async {
-    final voiceCommand = voiceCommandHandler.parse(inputController.text);
+    final voiceCommand = voiceCommandHandler.parse(
+      voiceInputController.text.trim(),
+    );
+    if (voiceCommand.type == VoiceCommandType.unknown) {
+      setState(() {
+        message = 'I could not understand that command. Please try again.';
+      });
+      return;
+    }
 
-    if (voiceCommand.type == VoiceCommandType.unknown) return;
+    voiceInputController.clear();
 
     if (voiceCommand.type == VoiceCommandType.listProducts) {
       await runAction(loadDrafts);
@@ -772,6 +763,65 @@ class _CatalogScreenState extends State<CatalogScreen> {
     );
   }
 
+  void openAddProduct() {
+    setState(() {
+      currentView = CatalogView.editor;
+
+      editingProductId = null;
+      savedProductId = null;
+      generatedDraft = null;
+
+      inputController.clear();
+      titleController.clear();
+      descriptionController.clear();
+      categoryController.text = 'other';
+      priceController.clear();
+
+      selectedImage = null;
+      selectedImageBytes = null;
+
+      message = '';
+    });
+  }
+
+  void openProductEditor(Map<String, dynamic> product) {
+    startEditingProduct(product);
+
+    setState(() {
+      currentView = CatalogView.editor;
+    });
+  }
+
+  void returnHome() {
+    setState(() {
+      currentView = CatalogView.home;
+      message = '';
+    });
+  }
+
+  Future<void> startCatalogListening() async {
+    if (!speechAvailable || loading || isListening) return;
+
+    inputController.clear();
+
+    await speechService.startListening(
+      onResult: (recognizedWords) {
+        if (!mounted) return;
+
+        setState(() {
+          inputController.text = recognizedWords;
+          inputController.selection = TextSelection.collapsed(
+            offset: inputController.text.length,
+          );
+        });
+      },
+    );
+  }
+
+  Future<void> stopCatalogListening() async {
+    await speechService.stopListening();
+  }
+
   @override
   void dispose() {
     inputController.dispose();
@@ -779,17 +829,50 @@ class _CatalogScreenState extends State<CatalogScreen> {
     descriptionController.dispose();
     categoryController.dispose();
     priceController.dispose();
-    speechService.stopListening();
-    speechService.stopSpeaking();
+    widget.voiceAssistantController.removeListener(
+      _handleVoiceAssistantChanged,
+    );
     selectedImageBytes = null;
+    voiceInputController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    if (currentView == CatalogView.home) {
+      return HomeScreen(
+        products: drafts,
+        imageUrls: draftImageUrls,
+        loading: loading,
+        message: message,
+        voiceInputController: voiceInputController,
+        speechAvailable: speechAvailable,
+        isListening: isListening,
+        speechMessage: speechMessage,
+        onStartListening: startListening,
+        onStopListening: stopListening,
+        onVoiceCommand: handleVoiceCommand,
+        onRefresh: () => runAction(loadDrafts),
+        onProductTap: openProductEditor,
+        onAddProduct: openAddProduct,
+        onProfile: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const ProfileScreen()),
+          );
+        },
+        onSignOut: signOut,
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Catalog prototype'),
+        leading: IconButton(
+          tooltip: 'Back to products',
+          icon: const Icon(Icons.arrow_back),
+          onPressed: returnHome,
+        ),
+        title: Text(editingProductId == null ? 'Add Product' : 'Edit Product'),
         actions: [
           IconButton(
             tooltip: 'My profile',
@@ -803,11 +886,6 @@ class _CatalogScreenState extends State<CatalogScreen> {
                   },
             icon: const Icon(Icons.person_outline),
           ),
-          IconButton(
-            tooltip: 'Sign out',
-            onPressed: signOut,
-            icon: const Icon(Icons.logout),
-          ),
         ],
       ),
       body: ListView(
@@ -820,8 +898,8 @@ class _CatalogScreenState extends State<CatalogScreen> {
             isListening: isListening,
             speechMessage: speechMessage,
             onGenerate: generateCatalog,
-            onStartListening: startListening,
-            onStopListening: stopListening,
+            onStartListening: startCatalogListening,
+            onStopListening: stopCatalogListening,
           ),
           const Divider(height: 32),
 
@@ -845,38 +923,33 @@ class _CatalogScreenState extends State<CatalogScreen> {
             onCancelEditing: () {
               setState(() {
                 editingProductId = null;
+                savedProductId = null;
+                generatedDraft = null;
+
                 titleController.clear();
                 descriptionController.clear();
-                categoryController.clear();
+                categoryController.text = 'other';
                 priceController.clear();
+                inputController.clear();
+
+                selectedImage = null;
+                selectedImageBytes = null;
+
                 message = 'Product editing cancelled.';
+                currentView = CatalogView.home;
               });
             },
           ),
-          const Divider(height: 32),
-          ProductListSection(
-            products: drafts,
-            imageUrls: draftImageUrls,
-            imagePaths: draftImagePaths,
-            imageComparisons: draftImageComparisons,
-            voiceMatchedProductId: voiceMatchedProductId,
-            loading: loading,
-            canEdit: savedProductId == null,
-            onLoadProducts: () => runAction(loadDrafts),
-            onEdit: startEditingProduct,
-            onPublish: (id) => updatePublication(id, true),
-            onUnpublish: (id) => updatePublication(id, false),
-            onShare: shareProduct,
-            onRequestEnhancement: requestImageEnhancement,
-            onSelectImage: selectImage,
-          ),
-          const SizedBox(height: 24),
 
-          ArchivedProductsSection(
-            products: archivedProducts,
-            loading: loading,
-            onRepublish: publishArchivedProduct,
-          ),
+          const Divider(height: 32),
+
+          if (message.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Text(
+              message,
+              style: TextStyle(color: Theme.of(context).colorScheme.primary),
+            ),
+          ],
         ],
       ),
     );
