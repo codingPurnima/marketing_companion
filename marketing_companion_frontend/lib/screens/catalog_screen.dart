@@ -16,6 +16,7 @@ import '../services/catalog_service.dart';
 import '../services/voice_command_handler.dart';
 import '../widgets/catalog/voice_command_confirmation_dialog.dart';
 import '../controllers/voice_assistant_controller.dart';
+import '../widgets/catalog/voice_assistant_section.dart';
 
 import 'home_screen.dart';
 
@@ -873,20 +874,6 @@ class _CatalogScreenState extends State<CatalogScreen> {
           onPressed: returnHome,
         ),
         title: Text(editingProductId == null ? 'Add Product' : 'Edit Product'),
-        actions: [
-          IconButton(
-            tooltip: 'My profile',
-            onPressed: loading
-                ? null
-                : () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const ProfileScreen()),
-                    );
-                  },
-            icon: const Icon(Icons.person_outline),
-          ),
-        ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -951,6 +938,16 @@ class _CatalogScreenState extends State<CatalogScreen> {
             ),
           ],
         ],
+      ),
+      bottomNavigationBar: VoiceAssistantSection(
+        controller: voiceInputController,
+        loading: loading,
+        speechAvailable: speechAvailable,
+        isListening: isListening,
+        speechMessage: speechMessage,
+        onStartListening: startListening,
+        onStopListening: stopListening,
+        onSubmit: handleVoiceCommand,
       ),
     );
   }
