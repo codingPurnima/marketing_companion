@@ -47,7 +47,7 @@ class _ProductEditorSectionState extends State<ProductEditorSection> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          isEditing ? '2. Edit product' : '2. Review and edit draft',
+          isEditing ? '' : '2. Review and edit draft',
           style: Theme.of(context).textTheme.titleLarge,
         ),
 
