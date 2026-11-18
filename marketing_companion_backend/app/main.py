@@ -1,7 +1,7 @@
 
 from fastapi import FastAPI
 
-from app.api.routes import health, auth, catalog, images, profile
+from app.api.routes import health, auth, catalog, images, profile, voice
 from app.core.config import get_settings
 
 settings = get_settings()
@@ -26,6 +26,9 @@ app.include_router(
 )
 app.include_router(
     profile.router, prefix= settings.api_v1_prefix,
+)
+app.include_router(
+    voice.router, prefix= settings.api_v1_prefix,
 )
 
 @app.get("/")
