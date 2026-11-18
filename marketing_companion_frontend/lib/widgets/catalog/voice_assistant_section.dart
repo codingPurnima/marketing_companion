@@ -64,7 +64,7 @@ class VoiceAssistantSection extends StatelessWidget {
                         if (!loading) onSubmit();
                       },
                       decoration: const InputDecoration(
-                        hintText: 'Try “Show my products” or “Edit blue vase”',
+                        hintText: 'Try "Load my products” or “Edit blue vase”',
                         border: OutlineInputBorder(),
                         isDense: true,
                       ),
