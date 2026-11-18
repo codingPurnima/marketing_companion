@@ -79,6 +79,34 @@ class _CatalogScreenState extends State<CatalogScreen> {
 
   CatalogView currentView = CatalogView.home;
 
+  final ScrollController homeScrollController = ScrollController();
+
+  void scrollToVoiceMatchedProduct() {
+    if (voiceMatchedProductId == null) return;
+
+    final index = drafts.indexWhere(
+      (product) =>
+          product is Map && product['id']?.toString() == voiceMatchedProductId,
+    );
+
+    if (index < 0 || !homeScrollController.hasClients) return;
+
+    final targetOffset = index * 120.0;
+
+    homeScrollController
+        .animateTo(
+          targetOffset,
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeInOut,
+        )
+        .then((_) {
+          Future.delayed(const Duration(milliseconds: 300), () {
+            if (!mounted) return;
+            setState(() => voiceMatchedProductId = null);
+          });
+        });
+  }
+
   void startEditingProduct(Map<String, dynamic> product) {
     setState(() {
       currentView = CatalogView.editor;
@@ -235,6 +263,13 @@ class _CatalogScreenState extends State<CatalogScreen> {
               this.draftImageIds = draftImageIds;
               this.draftImageComparisons = draftImageComparisons;
             });
+
+            if (voiceMatchedProductId != null) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!mounted) return;
+                scrollToVoiceMatchedProduct();
+              });
+            }
           },
     );
   }
@@ -561,6 +596,9 @@ class _CatalogScreenState extends State<CatalogScreen> {
         onSignOut: signOut,
         archivedProducts: archivedProducts,
         onRepublishArchived: publishArchivedProduct,
+        voiceMatchedProductId: voiceMatchedProductId,
+        scrollController: homeScrollController,
+        onScrollToProduct: () => scrollToVoiceMatchedProduct(),
       );
     }
 

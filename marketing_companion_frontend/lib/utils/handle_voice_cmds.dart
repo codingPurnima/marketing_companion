@@ -137,6 +137,7 @@ Future<void> processVoiceCommand({
   final status = product['status']?.toString();
 
   if (action == 'find') {
+    goHome();
     updateVoiceMatchedProductId(productId);
     updateMessage('Found product: $title');
     await speechService.speak('I found $title.');
