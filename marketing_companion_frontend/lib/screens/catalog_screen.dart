@@ -19,6 +19,8 @@ import '../services/catalog_service.dart';
 import '../services/voice_command_handler.dart';
 import '../controllers/voice_assistant_controller.dart';
 import '../widgets/catalog/voice_assistant_section.dart';
+import '../models/voice_command_result.dart';
+import '../services/voice_understanding_service.dart';
 
 import 'home_screen.dart';
 
@@ -49,6 +51,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
       widget.voiceAssistantController.speechService;
   late final VoiceCommandHandler voiceCommandHandler;
   late final CatalogService catalogService;
+  late final VoiceUnderstandingService voiceUnderstandingService;
 
   XFile? selectedImage;
   Uint8List? selectedImageBytes;
@@ -347,6 +350,9 @@ class _CatalogScreenState extends State<CatalogScreen> {
       supabaseClient: supabase,
       apiService: apiService,
     );
+    voiceUnderstandingService = VoiceUnderstandingService(
+      apiService: apiService,
+    );
     voiceCommandHandler = VoiceCommandHandler(
       commandService: VoiceCommandService(),
     );
@@ -361,6 +367,22 @@ class _CatalogScreenState extends State<CatalogScreen> {
     if (mounted) {
       setState(() {});
     }
+  }
+
+  VoiceCommand _convertGeminiIntent(VoiceCommandResult result) {
+    final type = switch (result.intent) {
+      'list_products' => VoiceCommandType.listProducts,
+      'save_draft' => VoiceCommandType.saveDraft,
+      'load_archived_products' => VoiceCommandType.listArchived,
+      'find_product' => VoiceCommandType.find,
+      'edit_product' => VoiceCommandType.edit,
+      'republish_product' => VoiceCommandType.republish,
+      'publish_product' => VoiceCommandType.publish,
+      'archive_product' => VoiceCommandType.archive,
+      _ => VoiceCommandType.unknown,
+    };
+
+    return VoiceCommand(type, productName: result.productQuery);
   }
 
   Future<void> startListening() async {
@@ -521,10 +543,80 @@ class _CatalogScreenState extends State<CatalogScreen> {
   }
 
   Future<void> handleVoiceCommand() async {
+    final transcript = voiceInputController.text.trim();
+
+    if (transcript.isEmpty || loading) return;
+
+    VoiceCommandResult? result;
+
+    // Step 1: Ask Gemini to understand the command.
+    await runAction(() async {
+      result = await voiceUnderstandingService.understandCommand(
+        transcript: transcript,
+        languageHint: 'auto',
+      );
+    });
+
+    if (!mounted || result == null) return;
+
+    final interpretation = result!;
+
+    // Step 2: Handle unclear commands.
+    if (interpretation.needsClarification) {
+      final question =
+          interpretation.clarificationQuestion ??
+          'Could you please clarify your command?';
+
+      setState(() {
+        message = question;
+      });
+
+      await speechService.speak(question);
+      return;
+    }
+
+    // Step 3: Convert Gemini's intent into an existing command.
+    final voiceCommand = _convertGeminiIntent(interpretation);
+
+    if (voiceCommand.type == VoiceCommandType.unknown) {
+      const response = 'I could not understand that command. Please try again.';
+
+      setState(() {
+        message = response;
+      });
+
+      await speechService.speak(response);
+      return;
+    }
+
+    // Step 4: Product-specific commands must identify a product.
+    final requiresProduct = {
+      VoiceCommandType.find,
+      VoiceCommandType.edit,
+      VoiceCommandType.publish,
+      VoiceCommandType.archive,
+      VoiceCommandType.republish,
+    };
+
+    if (requiresProduct.contains(voiceCommand.type) &&
+        (voiceCommand.productName == null ||
+            voiceCommand.productName!.trim().isEmpty)) {
+      const response = 'Which product are you referring to?';
+
+      setState(() {
+        message = response;
+      });
+
+      await speechService.speak(response);
+      return;
+    }
+
+    // Step 5: Execute through your existing action workflow.
     await processVoiceCommand(
       context: context,
       voiceInputController: voiceInputController,
       voiceCommandHandler: voiceCommandHandler,
+      interpretedCommand: voiceCommand,
       speechService: speechService,
       runAction: runAction,
       loadDrafts: loadDrafts,

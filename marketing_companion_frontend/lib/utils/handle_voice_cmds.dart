@@ -25,10 +25,11 @@ Future<void> processVoiceCommand({
   required void Function(String message) updateMessage,
   required void Function(String? productId) updateVoiceMatchedProductId,
   required void Function() goHome,
+  VoiceCommand? interpretedCommand,
 }) async {
-  final voiceCommand = voiceCommandHandler.parse(
-    voiceInputController.text.trim(),
-  );
+  final voiceCommand =
+      interpretedCommand ??
+      voiceCommandHandler.parse(voiceInputController.text.trim());
 
   if (voiceCommand.type == VoiceCommandType.unknown) {
     updateMessage('I could not understand that command. Please try again.');
