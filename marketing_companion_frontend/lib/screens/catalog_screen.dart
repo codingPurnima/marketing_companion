@@ -68,6 +68,10 @@ class _CatalogScreenState extends State<CatalogScreen> {
   bool loading = false;
   String message = '';
 
+  bool initialProductsLoading = true;
+  String? initialProductsError;
+  bool _hasLoadedProducts = false;
+
   String? editingProductId;
 
   List<dynamic> archivedProducts = [];
@@ -246,35 +250,57 @@ class _CatalogScreenState extends State<CatalogScreen> {
   }
 
   Future<void> loadDrafts() async {
-    await loadCatalogDrafts(
-      catalogService: catalogService,
-      imageService: imageService,
-      loadArchivedProducts: loadArchivedProducts,
-      updateCatalogState:
-          ({
-            required List<dynamic> drafts,
-            required Map<String, String> draftImageUrls,
-            required Map<String, String> draftImagePaths,
-            required Map<String, String> draftImageIds,
-            required Map<String, Map<String, dynamic>> draftImageComparisons,
-          }) {
-            if (!mounted) return;
-            setState(() {
-              this.drafts = drafts;
-              this.draftImageUrls = draftImageUrls;
-              this.draftImagePaths = draftImagePaths;
-              this.draftImageIds = draftImageIds;
-              this.draftImageComparisons = draftImageComparisons;
-            });
+    if (!_hasLoadedProducts && mounted) {
+      setState(() {
+        initialProductsLoading = true;
+        initialProductsError = null;
+      });
+    }
+    try {
+      await loadCatalogDrafts(
+        catalogService: catalogService,
+        imageService: imageService,
+        loadArchivedProducts: loadArchivedProducts,
+        updateCatalogState:
+            ({
+              required List<dynamic> drafts,
+              required Map<String, String> draftImageUrls,
+              required Map<String, String> draftImagePaths,
+              required Map<String, String> draftImageIds,
+              required Map<String, Map<String, dynamic>> draftImageComparisons,
+            }) {
+              if (!mounted) return;
 
-            if (voiceMatchedProductId != null) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (!mounted) return;
-                scrollToVoiceMatchedProduct();
+              setState(() {
+                this.drafts = drafts;
+                this.draftImageUrls = draftImageUrls;
+                this.draftImagePaths = draftImagePaths;
+                this.draftImageIds = draftImageIds;
+                this.draftImageComparisons = draftImageComparisons;
+                initialProductsError = null;
+                _hasLoadedProducts = true;
               });
-            }
-          },
-    );
+
+              if (voiceMatchedProductId != null) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (!mounted) return;
+                  scrollToVoiceMatchedProduct();
+                });
+              }
+            },
+      );
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          initialProductsError = e.toString().replaceFirst('Exception: ', '');
+        });
+      }
+      rethrow;
+    } finally {
+      if (mounted && initialProductsLoading) {
+        setState(() => initialProductsLoading = false);
+      }
+    }
   }
 
   Future<void> updatePublication(String productId, bool publish) async {
@@ -360,7 +386,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
 
     widget.voiceAssistantController.initialize();
 
-    loadDrafts();
+    loadDrafts().catchError((_) {});
   }
 
   void _handleVoiceAssistantChanged() {
@@ -756,6 +782,9 @@ class _CatalogScreenState extends State<CatalogScreen> {
         voiceMatchedProductId: voiceMatchedProductId,
         scrollController: homeScrollController,
         onScrollToProduct: () => scrollToVoiceMatchedProduct(),
+        initialLoading: initialProductsLoading,
+        initialError: initialProductsError,
+        onRetry: () => loadDrafts().catchError((_) {}),
       );
     }
 

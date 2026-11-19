@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../widgets/catalog/voice_assistant_section.dart';
+import '../widgets/catalog/product_tile.dart';
 
 class HomeScreen extends StatelessWidget {
   final List<dynamic> products;
@@ -28,6 +29,10 @@ class HomeScreen extends StatelessWidget {
   final ScrollController? scrollController;
   final VoidCallback? onScrollToProduct;
 
+  final bool initialLoading;
+  final String? initialError;
+  final VoidCallback onRetry;
+
   const HomeScreen({
     super.key,
     required this.products,
@@ -51,10 +56,20 @@ class HomeScreen extends StatelessWidget {
     this.voiceMatchedProductId,
     this.scrollController,
     this.onScrollToProduct,
+    required this.initialLoading,
+    required this.initialError,
+    required this.onRetry,
   });
 
   @override
   Widget build(BuildContext context) {
+    final publishedProducts = products.where((item) {
+      return item is Map && item['status']?.toString() == 'published';
+    }).toList();
+
+    final draftProducts = products.where((item) {
+      return item is Map && item['status']?.toString() != 'published';
+    }).toList();
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Products'),
@@ -114,7 +129,56 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
             ),
-            if (products.isEmpty)
+            if (initialLoading)
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const CircularProgressIndicator(),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Fetching products...',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else if (initialError != null && products.isEmpty)
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.cloud_off_outlined, size: 48),
+                        const SizedBox(height: 12),
+                        const Text(
+                          'Could not fetch your products.',
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          initialError!,
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                        const SizedBox(height: 16),
+                        FilledButton.icon(
+                          onPressed: onRetry,
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Try again'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              )
+            else if (products.isEmpty)
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.all(32),
@@ -139,138 +203,20 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ),
               )
-            else
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
-                sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate((context, index) {
-                    final product = Map<String, dynamic>.from(
-                      products[index] as Map,
-                    );
-
-                    final productId = product['id']?.toString();
-                    final title =
-                        product['title']?.toString() ?? 'Untitled product';
-                    final category = product['category']?.toString() ?? 'Other';
-                    final status = product['status']?.toString() ?? 'draft';
-                    final price = product['price'] ?? product['price_inr'];
-                    final imageUrl = productId == null
-                        ? null
-                        : imageUrls[productId];
-                    final isVoiceMatched =
-                        productId != null && productId == voiceMatchedProductId;
-
-                    if (isVoiceMatched && onScrollToProduct != null) {
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        onScrollToProduct!.call();
-                      });
-                    }
-
-                    return AnimatedContainer(
-                      duration: const Duration(milliseconds: 350),
-                      curve: Curves.easeOutCubic,
-                      margin: const EdgeInsets.symmetric(
-                        horizontal: 4,
-                        vertical: 5,
-                      ),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: isVoiceMatched
-                              ? Theme.of(context).colorScheme.primary
-                              : Theme.of(context).dividerColor,
-                          width: isVoiceMatched ? 2.5 : 1,
-                        ),
-                        boxShadow: isVoiceMatched
-                            ? [
-                                BoxShadow(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.primary.withOpacity(0.18),
-                                  blurRadius: 14,
-                                  offset: const Offset(0, 6),
-                                ),
-                              ]
-                            : null,
-                        color: isVoiceMatched
-                            ? Theme.of(
-                                context,
-                              ).colorScheme.primaryContainer.withOpacity(0.35)
-                            : null,
-                      ),
-                      child: AnimatedScale(
-                        scale: isVoiceMatched ? 1.02 : 1.0,
-                        duration: const Duration(milliseconds: 250),
-                        curve: Curves.easeOut,
-                        child: Card(
-                          margin: EdgeInsets.zero,
-                          clipBehavior: Clip.antiAlias,
-                          elevation: isVoiceMatched ? 3 : 1,
-                          color: Colors.transparent,
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.all(12),
-                            onTap: loading ? null : () => onProductTap(product),
-                            leading: SizedBox(
-                              width: 64,
-                              height: 64,
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: imageUrl != null
-                                    ? Image.network(
-                                        imageUrl,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) =>
-                                            _imagePlaceholder(context),
-                                      )
-                                    : _imagePlaceholder(context),
-                              ),
-                            ),
-                            title: Text(
-                              title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            subtitle: Padding(
-                              padding: const EdgeInsets.only(top: 6),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    '$category · ${price == null ? 'Price not set' : '₹$price'}',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 6),
-                                  _statusLabel(context, status),
-                                ],
-                              ),
-                            ),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                if (isVoiceMatched)
-                                  Padding(
-                                    padding: const EdgeInsets.only(right: 8),
-                                    child: Icon(
-                                      Icons.highlight_alt_rounded,
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.primary,
-                                    ),
-                                  ),
-                                const Icon(Icons.chevron_right),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  }, childCount: products.length),
-                ),
+            else ...[
+              ..._buildProductSection(
+                context,
+                title: 'Published products',
+                sectionProducts: publishedProducts,
+                emptyMessage: 'No published products yet.',
               ),
+              ..._buildProductSection(
+                context,
+                title: 'Drafts',
+                sectionProducts: draftProducts,
+                emptyMessage: 'No drafts yet.',
+              ),
+            ],
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
               sliver: SliverToBoxAdapter(
@@ -315,20 +261,20 @@ class HomeScreen extends StatelessWidget {
                     final price = product['price'] ?? product['price_inr'];
                     final productId = product['id']?.toString();
 
-                    return Card(
-                      margin: const EdgeInsets.symmetric(
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(
                         horizontal: 4,
                         vertical: 5,
                       ),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        title: Text(title),
-                        subtitle: Text(
-                          '$category · ${price == null ? 'Price not set' : '₹$price'}',
-                        ),
+                      child: ProductTile(
+                        title: title,
+                        category: category,
+                        price: price?.toString(),
+                        status: 'archived',
+                        imageUrl: productId == null
+                            ? null
+                            : imageUrls[productId],
+                        onTap: null,
                         trailing: TextButton(
                           onPressed: loading || productId == null
                               ? null
@@ -356,34 +302,83 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _imagePlaceholder(BuildContext context) {
-    return Container(
-      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-      alignment: Alignment.center,
-      child: Icon(
-        Icons.image_outlined,
-        color: Theme.of(context).colorScheme.outline,
-      ),
-    );
-  }
-
-  Widget _statusLabel(BuildContext context, String status) {
-    final label = switch (status) {
-      'published' => 'Published',
-      'archived' => 'Archived',
-      _ => 'Draft',
-    };
-
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.secondaryContainer,
-          borderRadius: BorderRadius.circular(20),
+  List<Widget> _buildProductSection(
+    BuildContext context, {
+    required String title,
+    required List<dynamic> sectionProducts,
+    required String emptyMessage,
+  }) {
+    return [
+      SliverPadding(
+        padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+        sliver: SliverToBoxAdapter(
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ),
+              Text(
+                '${sectionProducts.length}',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ],
+          ),
         ),
-        child: Text(label, style: Theme.of(context).textTheme.labelSmall),
       ),
-    );
+      if (sectionProducts.isEmpty)
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            child: Text(
+              emptyMessage,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ),
+        )
+      else
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate((context, index) {
+              final product = Map<String, dynamic>.from(
+                sectionProducts[index] as Map,
+              );
+
+              final productId = product['id']?.toString();
+              final title = product['title']?.toString() ?? 'Untitled product';
+              final category = product['category']?.toString() ?? 'Other';
+              final status = product['status']?.toString() ?? 'draft';
+              final price = product['price'] ?? product['price_inr'];
+
+              final imageUrl = productId == null ? null : imageUrls[productId];
+
+              final isVoiceMatched =
+                  productId != null && productId == voiceMatchedProductId;
+
+              if (isVoiceMatched && onScrollToProduct != null) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  onScrollToProduct!.call();
+                });
+              }
+
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 5),
+                child: ProductTile(
+                  title: title,
+                  category: category,
+                  price: price?.toString(),
+                  status: status,
+                  imageUrl: imageUrl,
+                  highlighted: isVoiceMatched,
+                  onTap: loading ? null : () => onProductTap(product),
+                ),
+              );
+            }, childCount: sectionProducts.length),
+          ),
+        ),
+    ];
   }
 }
