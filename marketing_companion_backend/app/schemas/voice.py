@@ -35,6 +35,10 @@ class ProductUpdates(BaseModel):
 class VoiceUnderstandRequest(BaseModel):
     transcript: str = Field(min_length=1, max_length=1000)
     language_hint: Literal["auto", "hi-IN", "en-IN"] = "auto"
+    context_product_title: str | None = Field(
+        default=None,
+        max_length=200,
+    )
 
 
 class VoiceCommandResult(BaseModel):
