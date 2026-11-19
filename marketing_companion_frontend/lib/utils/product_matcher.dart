@@ -1,16 +1,13 @@
-
 String normalizeVoiceText(String value) {
   return value
       .toLowerCase()
-      .replaceAll(RegExp(r'[^a-z0-9\s]'), ' ')
+      // Preserve letters and numbers from Hindi and other scripts.
+      .replaceAll(RegExp(r'[^\p{L}\p{M}\p{N}\s]', unicode: true), ' ')
       .replaceAll(RegExp(r'\s+'), ' ')
       .trim();
 }
 
-String? extractProductName(
-  String command,
-  List<String> prefixes,
-) {
+String? extractProductName(String command, List<String> prefixes) {
   for (final prefix in prefixes) {
     if (command.startsWith('$prefix ')) {
       return command.substring(prefix.length).trim();
@@ -25,14 +22,18 @@ List<Map<String, dynamic>> findMatchingProducts(
   required List<dynamic> source,
 }) {
   final normalizedQuery = normalizeVoiceText(query);
+
+  if (normalizedQuery.isEmpty) return [];
+
   final queryWords = normalizedQuery.split(' ').toSet();
   final matches = <Map<String, dynamic>>[];
 
   for (final item in source) {
-    final product = Map<String, dynamic>.from(item as Map);
-    final title = normalizeVoiceText(
-      product['title']?.toString() ?? '',
-    );
+    if (item is! Map) continue;
+
+    final product = Map<String, dynamic>.from(item);
+
+    final title = normalizeVoiceText(product['title']?.toString() ?? '');
 
     if (title.isEmpty) continue;
 
@@ -57,8 +58,8 @@ List<Map<String, dynamic>> findMatchingProducts(
   }
 
   matches.sort(
-    (a, b) => (b['_matchScore'] as double)
-        .compareTo(a['_matchScore'] as double),
+    (a, b) =>
+        (b['_matchScore'] as double).compareTo(a['_matchScore'] as double),
   );
 
   return matches;
