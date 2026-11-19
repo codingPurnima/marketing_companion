@@ -4,6 +4,7 @@ import '../services/speech_service.dart';
 import '../services/voice_command_handler.dart';
 import '../services/voice_command_service.dart';
 import '../widgets/catalog/voice_command_confirmation_dialog.dart';
+import '../models/voice_command_result.dart';
 
 Future<void> processVoiceCommand({
   required BuildContext context,
@@ -26,6 +27,13 @@ Future<void> processVoiceCommand({
   required void Function(String? productId) updateVoiceMatchedProductId,
   required void Function() goHome,
   VoiceCommand? interpretedCommand,
+  required Future<bool> Function(
+    Map<String, dynamic> product,
+    VoiceCommandUpdates updates,
+  )
+  applyProductUpdates,
+  required List<dynamic> Function() getDrafts,
+  required List<dynamic> Function() getArchivedProducts,
 }) async {
   final voiceCommand =
       interpretedCommand ??
@@ -43,9 +51,11 @@ Future<void> processVoiceCommand({
 
     if (!mounted) return;
 
-    final response = drafts.isEmpty
+    final currentDrafts = getDrafts();
+
+    final response = currentDrafts.isEmpty
         ? 'You have no products in your catalog yet.'
-        : 'You have ${drafts.length} products in your catalog.';
+        : 'You have ${currentDrafts.length} products in your catalog.';
 
     await speechService.speak(response);
     return;
@@ -73,10 +83,10 @@ Future<void> processVoiceCommand({
 
     if (!mounted) return;
 
-    final count = archivedProducts.length;
+    final count = getArchivedProducts().length;
     final response = count == 0
         ? 'You have no archived products.'
-        : 'You have $count archived products. They are displayed on your home screen.';
+        : 'You have $count archived products. They are displayed on your home screen. Scroll down to view them';
 
     await speechService.speak(response);
     return;
@@ -101,11 +111,14 @@ Future<void> processVoiceCommand({
 
   if (!mounted) return;
 
+  final currentDrafts = getDrafts();
+  final currentArchivedProducts = getArchivedProducts();
+
   final matches = voiceCommandHandler.findMatches(
     productName: productName,
     commandType: voiceCommand.type,
-    drafts: drafts,
-    archivedProducts: archivedProducts,
+    drafts: currentDrafts,
+    archivedProducts: currentArchivedProducts,
   );
 
   if (matches.isEmpty) {
@@ -146,12 +159,42 @@ Future<void> processVoiceCommand({
   }
 
   if (action == 'edit') {
+    final updates = voiceCommand.updates;
+
+    final hasUpdates =
+        updates != null &&
+        (updates.title != null ||
+            updates.description != null ||
+            updates.category != null ||
+            updates.price != null);
+
+    if (hasUpdates) {
+      final success = await applyProductUpdates(product, updates);
+
+      if (!mounted) return;
+
+      if (success) {
+        updateVoiceMatchedProductId(productId);
+        updateMessage('$title has been updated successfully.');
+        await speechService.speak('$title has been updated successfully.');
+      } else {
+        await speechService.speak(
+          'I could not update $title. Please check the details.',
+        );
+      }
+
+      return;
+    }
+
     await startEditingProduct(product);
+
     updateVoiceMatchedProductId(productId);
     updateMessage('Loaded $title for editing.');
+
     await speechService.speak(
       'I have loaded $title. You can now edit its details.',
     );
+
     return;
   }
 
