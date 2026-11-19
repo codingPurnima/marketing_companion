@@ -1,5 +1,6 @@
 
 import '../utils/product_matcher.dart';
+import '../models/voice_command_result.dart';
 
 enum VoiceCommandType {
   listProducts,
@@ -16,8 +17,13 @@ enum VoiceCommandType {
 class VoiceCommand {
   final VoiceCommandType type;
   final String? productName;
+  final VoiceCommandUpdates? updates;
 
-  const VoiceCommand(this.type, {this.productName});
+  const VoiceCommand(
+    this.type, {
+    this.productName,
+    this.updates,
+  });
 }
 
 class VoiceCommandService {
