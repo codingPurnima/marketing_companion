@@ -382,7 +382,50 @@ class _CatalogScreenState extends State<CatalogScreen> {
       _ => VoiceCommandType.unknown,
     };
 
-    return VoiceCommand(type, productName: result.productQuery);
+    return VoiceCommand(
+      type,
+      productName: result.productQuery,
+      updates: result.updates,
+    );
+  }
+
+  Future<bool> applyVoiceProductUpdates(
+    Map<String, dynamic> product,
+    VoiceCommandUpdates updates,
+  ) async {
+    // Load the existing product values into the editor first.
+    startEditingProduct(product);
+
+    if (updates.title != null) {
+      titleController.text = updates.title!;
+    }
+
+    if (updates.description != null) {
+      descriptionController.text = updates.description!;
+    }
+
+    if (updates.category != null) {
+      categoryController.text = updates.category!;
+    }
+
+    if (updates.price != null) {
+      priceController.text = updates.price!.toString();
+    }
+
+    // Save through the existing catalog workflow.
+    await saveDraft();
+
+    // saveCatalogDraft clears editingProductId only after a successful update.
+    final success =
+        editingProductId == null && message == 'Product updated successfully.';
+
+    if (success && mounted) {
+      setState(() {
+        currentView = CatalogView.home;
+      });
+    }
+
+    return success;
   }
 
   Future<void> startListening() async {
@@ -554,6 +597,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
       result = await voiceUnderstandingService.understandCommand(
         transcript: transcript,
         languageHint: 'auto',
+        contextProductTitle: getVoiceContextProductTitle(),
       );
     });
 
@@ -643,7 +687,28 @@ class _CatalogScreenState extends State<CatalogScreen> {
           message = '';
         });
       },
+      applyProductUpdates: applyVoiceProductUpdates,
+      getDrafts: () => drafts,
+      getArchivedProducts: () => archivedProducts,
     );
+  }
+
+  String? getVoiceContextProductTitle() {
+    final productId = voiceMatchedProductId;
+
+    if (productId == null) return null;
+
+    final allProducts = [...drafts, ...archivedProducts];
+
+    for (final item in allProducts) {
+      if (item is! Map) continue;
+
+      if (item['id']?.toString() == productId) {
+        return item['title']?.toString();
+      }
+    }
+
+    return null;
   }
 
   @override

@@ -1,17 +1,15 @@
-
 import 'api_service.dart';
 import '../models/voice_command_result.dart';
 
 class VoiceUnderstandingService {
   final ApiService apiService;
 
-  VoiceUnderstandingService({
-    required this.apiService,
-  });
+  VoiceUnderstandingService({required this.apiService});
 
   Future<VoiceCommandResult> understandCommand({
     required String transcript,
     String languageHint = 'auto',
+    String? contextProductTitle,
   }) async {
     final cleanedTranscript = transcript.trim();
 
@@ -25,6 +23,7 @@ class VoiceUnderstandingService {
       body: {
         'transcript': cleanedTranscript,
         'language_hint': languageHint,
+        'context_product_title': contextProductTitle,
       },
     );
 
@@ -34,8 +33,6 @@ class VoiceUnderstandingService {
       );
     }
 
-    return VoiceCommandResult.fromJson(
-      Map<String, dynamic>.from(response),
-    );
+    return VoiceCommandResult.fromJson(Map<String, dynamic>.from(response));
   }
 }
