@@ -35,6 +35,9 @@ class HomeScreen extends StatelessWidget {
 
   final Map<String, GlobalKey> productItemKeys;
 
+  final Future<void> Function(String productId, bool publish)
+  onUpdatePublication;
+
   const HomeScreen({
     super.key,
     required this.products,
@@ -62,6 +65,7 @@ class HomeScreen extends StatelessWidget {
     required this.initialError,
     required this.onRetry,
     required this.productItemKeys,
+    required this.onUpdatePublication,
   });
 
   @override
@@ -284,12 +288,15 @@ class HomeScreen extends StatelessWidget {
                             ? null
                             : imageUrls[productId],
                         onTap: null,
-                        trailing: TextButton(
-                          onPressed: loading || productId == null
-                              ? null
-                              : () => onRepublishArchived(productId),
-                          child: const Text('Republish'),
-                        ),
+                        actionLabel: 'Republish',
+
+                        onAction: loading || productId == null
+                            ? null
+                            : () => _confirmProductAction(
+                                context,
+                                productId,
+                                'archived',
+                              ),
                       ),
                     );
                   }, childCount: archivedProducts.length),
@@ -310,103 +317,160 @@ class HomeScreen extends StatelessWidget {
       ),
     );
   }
-List<Widget> _buildProductSection(
-  BuildContext context, {
-  required String title,
-  required List<dynamic> sectionProducts,
-  required String emptyMessage,
-}) {
-  return [
-    SliverPadding(
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
-      sliver: SliverToBoxAdapter(
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                title,
-                style: Theme.of(context).textTheme.titleLarge,
+
+  Future<void> _confirmProductAction(
+    BuildContext context,
+    String productId,
+    String status,
+  ) async {
+    if (loading) return;
+
+    String action;
+    String buttonLabel;
+
+    switch (status) {
+      case 'published':
+        action = 'archive';
+        buttonLabel = 'Archive';
+        break;
+      case 'archived':
+        action = 'republish';
+        buttonLabel = 'Republish';
+        break;
+      default:
+        action = 'publish';
+        buttonLabel = 'Publish';
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('$action this product?'),
+        content: Text(switch (action) {
+          'publish' =>
+            'This product will become visible to customers in your catalog.',
+          'archive' =>
+            'This product will be removed from your published catalog.',
+          _ =>
+            'This archived product will be published again and visible to customers.',
+        }),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(buttonLabel),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    if (status == 'archived') {
+      onRepublishArchived(productId);
+    } else {
+      onUpdatePublication(productId, status != 'published');
+    }
+  }
+
+  List<Widget> _buildProductSection(
+    BuildContext context, {
+    required String title,
+    required List<dynamic> sectionProducts,
+    required String emptyMessage,
+  }) {
+    return [
+      SliverPadding(
+        padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+        sliver: SliverToBoxAdapter(
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
               ),
-            ),
-            Text(
-              '${sectionProducts.length}',
+              Text(
+                '${sectionProducts.length}',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ],
+          ),
+        ),
+      ),
+
+      if (sectionProducts.isEmpty)
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            child: Text(
+              emptyMessage,
               style: Theme.of(context).textTheme.bodyMedium,
             ),
-          ],
-        ),
-      ),
-    ),
+          ),
+        )
+      else
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+          sliver: SliverList(
+            delegate: SliverChildListDelegate(
+              List.generate(sectionProducts.length, (index) {
+                final product = Map<String, dynamic>.from(
+                  sectionProducts[index] as Map,
+                );
 
-    if (sectionProducts.isEmpty)
-      SliverToBoxAdapter(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-          child: Text(
-            emptyMessage,
-            style: Theme.of(context).textTheme.bodyMedium,
+                final productId = product['id']?.toString();
+
+                final productTitle =
+                    product['title']?.toString() ?? 'Untitled product';
+
+                final category = product['category']?.toString() ?? 'Other';
+
+                final status = product['status']?.toString() ?? 'draft';
+
+                final price = product['price'] ?? product['price_inr'];
+
+                final imageUrl = productId == null
+                    ? null
+                    : imageUrls[productId];
+
+                final isVoiceMatched =
+                    productId != null && productId == voiceMatchedProductId;
+
+                final productKey = productId == null
+                    ? null
+                    : productItemKeys.putIfAbsent(productId, () => GlobalKey());
+
+                return Padding(
+                  key: productKey,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 5,
+                  ),
+                  child: ProductTile(
+                    title: productTitle,
+                    category: category,
+                    price: price?.toString(),
+                    status: status,
+                    imageUrl: imageUrl,
+                    highlighted: isVoiceMatched,
+                    onTap: loading ? null : () => onProductTap(product),
+                    actionLabel: status == 'published' ? 'Archive' : 'Publish',
+
+                    onAction: loading || productId == null
+                        ? null
+                        : () =>
+                              _confirmProductAction(context, productId, status),
+                  ),
+                );
+              }),
+            ),
           ),
         ),
-      )
-    else
-      SliverPadding(
-        padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
-        sliver: SliverList(
-          delegate: SliverChildListDelegate(
-            List.generate(sectionProducts.length, (index) {
-              final product = Map<String, dynamic>.from(
-                sectionProducts[index] as Map,
-              );
-
-              final productId = product['id']?.toString();
-
-              final productTitle =
-                  product['title']?.toString() ?? 'Untitled product';
-
-              final category =
-                  product['category']?.toString() ?? 'Other';
-
-              final status =
-                  product['status']?.toString() ?? 'draft';
-
-              final price =
-                  product['price'] ?? product['price_inr'];
-
-              final imageUrl = productId == null
-                  ? null
-                  : imageUrls[productId];
-
-              final isVoiceMatched = productId != null &&
-                  productId == voiceMatchedProductId;
-
-              final productKey = productId == null
-                  ? null
-                  : productItemKeys.putIfAbsent(
-                      productId,
-                      () => GlobalKey(),
-                    );
-
-              return Padding(
-                key: productKey,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 4,
-                  vertical: 5,
-                ),
-                child: ProductTile(
-                  title: productTitle,
-                  category: category,
-                  price: price?.toString(),
-                  status: status,
-                  imageUrl: imageUrl,
-                  highlighted: isVoiceMatched,
-                  onTap: loading
-                      ? null
-                      : () => onProductTap(product),
-                ),
-              );
-            }),
-          ),
-        ),
-      ),
-  ];
-}
+    ];
+  }
 }

@@ -1015,6 +1015,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
         initialError: initialProductsError,
         onRetry: () => loadDrafts().catchError((_) {}),
         productItemKeys: productItemKeys,
+        onUpdatePublication: updatePublication,
       );
     }
 
