@@ -18,6 +18,8 @@ class _LoginScreenState extends State<LoginScreen> {
   bool loading = false;
   String message = '';
 
+  bool obscurePassword = true;
+
   Future<void> authenticate() async {
     setState(() {
       loading = true;
@@ -78,8 +80,20 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           TextField(
             controller: passwordController,
-            obscureText: true,
-            decoration: const InputDecoration(labelText: 'Password'),
+            obscureText: obscurePassword,
+            decoration: InputDecoration(
+              labelText: 'Password',
+              suffixIcon: IconButton(
+                icon: Icon(
+                  obscurePassword ? Icons.visibility_off : Icons.visibility,
+                ),
+                onPressed: () {
+                  setState(() {
+                    obscurePassword = !obscurePassword;
+                  });
+                },
+              ),
+            ),
           ),
           const SizedBox(height: 20),
           FilledButton(
