@@ -9,6 +9,8 @@ class ProductTile extends StatelessWidget {
   final bool highlighted;
   final VoidCallback? onTap;
   final Widget? trailing;
+  final String? actionLabel;
+  final VoidCallback? onAction;
 
   const ProductTile({
     super.key,
@@ -20,6 +22,8 @@ class ProductTile extends StatelessWidget {
     this.highlighted = false,
     this.onTap,
     this.trailing,
+    this.actionLabel,
+    this.onAction,
   });
 
   @override
@@ -29,20 +33,20 @@ class ProductTile extends StatelessWidget {
 
     final statusDetails = switch (status) {
       'published' => (
-          label: 'Published',
-          background: colors.primaryContainer,
-          foreground: colors.onPrimaryContainer,
-        ),
+        label: 'Published',
+        background: colors.primaryContainer,
+        foreground: colors.onPrimaryContainer,
+      ),
       'archived' => (
-          label: 'Archived',
-          background: colors.surfaceContainerHighest,
-          foreground: colors.onSurfaceVariant,
-        ),
+        label: 'Archived',
+        background: colors.surfaceContainerHighest,
+        foreground: colors.onSurfaceVariant,
+      ),
       _ => (
-          label: 'Draft',
-          background: colors.secondaryContainer,
-          foreground: colors.onSecondaryContainer,
-        ),
+        label: 'Draft',
+        background: colors.secondaryContainer,
+        foreground: colors.onSecondaryContainer,
+      ),
     };
 
     return AnimatedContainer(
@@ -141,7 +145,34 @@ class ProductTile extends StatelessWidget {
                 if (trailing != null) ...[
                   const SizedBox(width: 8),
                   trailing!,
-                ] else
+                ] else if (onAction != null)
+                  PopupMenuButton<String>(
+                    tooltip: 'Product actions',
+                    enabled: onAction != null,
+                    icon: Icon(Icons.more_vert, color: colors.onSurfaceVariant),
+                    onSelected: (value) {
+                      if (value == 'action') {
+                        onAction?.call();
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      PopupMenuItem<String>(
+                        value: 'action',
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.edit_outlined,
+                              size: 20,
+                              color: colors.onSurface,
+                            ),
+                            const SizedBox(width: 12),
+                            Text(actionLabel ?? 'Action'),
+                          ],
+                        ),
+                      ),
+                    ],
+                  )
+                else
                   Padding(
                     padding: const EdgeInsets.only(left: 6),
                     child: Icon(
