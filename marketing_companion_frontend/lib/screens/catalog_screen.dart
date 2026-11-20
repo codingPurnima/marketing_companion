@@ -155,7 +155,50 @@ class _CatalogScreenState extends State<CatalogScreen> {
     });
   }
 
+void _showFeedback(String text) {
+  if (!mounted || text.trim().isEmpty) return;
+
+  final overlay = Overlay.of(context);
+
+  late OverlayEntry entry;
+
+  entry = OverlayEntry(
+    builder: (context) => Positioned(
+      top: MediaQuery.of(context).padding.top + kToolbarHeight + 8,
+      left: 16,
+      right: 16,
+      child: Material(
+        elevation: 6,
+        borderRadius: BorderRadius.circular(12),
+        color: Theme.of(context).colorScheme.inverseSurface,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 12,
+          ),
+          child: Text(
+            text,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onInverseSurface,
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+
+  overlay.insert(entry);
+
+  Future.delayed(const Duration(seconds: 3), () {
+    entry.remove();
+    entry.dispose();
+  });
+}
+
+
   Future<void> runAction(Future<void> Function() action) async {
+    if (!mounted) return;
+
     setState(() {
       loading = true;
       message = '';
@@ -164,9 +207,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
     try {
       await action();
     } catch (e) {
-      message = e.toString().replaceFirst('Exception: ', '');
+      _showFeedback(e.toString().replaceFirst('Exception: ', ''));
     } finally {
-      if (mounted) setState(() => loading = false);
+      if (mounted) {
+        setState(() => loading = false);
+      }
     }
   }
 
@@ -184,10 +229,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
         if (!mounted) return;
         setState(() => generatedDraft = draft);
       },
-      updateMessage: (messageText) {
-        if (!mounted) return;
-        setState(() => message = messageText);
-      },
+      updateMessage: _showFeedback,
     );
   }
 
@@ -658,20 +700,32 @@ class _CatalogScreenState extends State<CatalogScreen> {
 
     if (transcript.isEmpty || loading) return;
 
-    VoiceCommandResult? result;
-
     // Step 1: Ask Gemini to understand the command.
-    await runAction(() async {
-      result = await voiceUnderstandingService.understandCommand(
+    VoiceCommandResult? interpretation;
+
+    setState(() {
+      loading = true;
+      message = '';
+    });
+
+    try {
+      interpretation = await voiceUnderstandingService.understandCommand(
         transcript: transcript,
         languageHint: 'auto',
         contextProductTitle: getVoiceContextProductTitle(),
       );
-    });
+    } catch (e) {
+      if (mounted) {
+        _showFeedback(e.toString().replaceFirst('Exception: ', ''));
+      }
+      return;
+    } finally {
+      if (mounted) {
+        setState(() => loading = false);
+      }
+    }
 
-    if (!mounted || result == null) return;
-
-    final interpretation = result!;
+    if (!mounted || interpretation == null) return;
 
     // Step 2: Handle unclear commands.
     if (interpretation.needsClarification) {
@@ -679,9 +733,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
           interpretation.clarificationQuestion ??
           'Could you please clarify your command?';
 
-      setState(() {
-        message = question;
-      });
+      _showFeedback(question);
 
       await speechService.speak(question);
       return;
@@ -693,9 +745,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
     if (voiceCommand.type == VoiceCommandType.unknown) {
       const response = 'I could not understand that command. Please try again.';
 
-      setState(() {
-        message = response;
-      });
+      _showFeedback(response);
 
       await speechService.speak(response);
       return;
@@ -715,9 +765,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
             voiceCommand.productName!.trim().isEmpty)) {
       const response = 'Which product are you referring to?';
 
-      setState(() {
-        message = response;
-      });
+      _showFeedback(response);
 
       await speechService.speak(response);
       return;
@@ -740,10 +788,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
       isEditorMode: currentView == CatalogView.editor,
       drafts: drafts,
       archivedProducts: archivedProducts,
-      updateMessage: (messageText) {
-        if (!mounted) return;
-        setState(() => message = messageText);
-      },
+      updateMessage: _showFeedback,
       updateVoiceMatchedProductId: (productId) {
         if (!mounted) return;
 
