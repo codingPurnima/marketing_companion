@@ -1,4 +1,3 @@
-
 import 'dart:typed_data';
 
 import 'package:image_picker/image_picker.dart';
@@ -65,10 +64,7 @@ class ImageService {
     await storage.uploadBinary(
       storagePath,
       bytes,
-      fileOptions: FileOptions(
-        contentType: contentType,
-        upsert: false,
-      ),
+      fileOptions: FileOptions(contentType: contentType, upsert: false),
     );
 
     try {
@@ -89,9 +85,7 @@ class ImageService {
     return storagePath;
   }
 
-  Future<List<Map<String, dynamic>>> getProductImages(
-    String productId,
-  ) async {
+  Future<List<Map<String, dynamic>>> getProductImages(String productId) async {
     final rows = await supabaseClient
         .from('product_images')
         .select('id, storage_path')
@@ -102,17 +96,41 @@ class ImageService {
   }
 
   Future<dynamic> getImageComparison(String imageId) {
-    return apiService.request(
-      '/api/v1/images/$imageId/comparison',
-    );
+    return apiService.request('/api/v1/images/$imageId/comparison');
   }
 
-  Future<dynamic> requestEnhancement(String storagePath) {
-    return apiService.request(
+  Future<Map<String, dynamic>> requestEnhancement(String storagePath) async {
+    final path = storagePath.trim();
+
+    if (path.isEmpty) {
+      throw Exception('Upload a product image before enhancing it.');
+    }
+
+    final response = await apiService.request(
       '/api/v1/images/enhance',
       method: 'POST',
-      body: {'original_storage_path': storagePath},
+      body: {'original_storage_path': path},
     );
+
+    if (response is! Map) {
+      throw Exception('Invalid response from image enhancement service.');
+    }
+
+    final result = Map<String, dynamic>.from(response);
+
+    final status = result['status']?.toString();
+    final enhancedPath = result['enhanced_storage_path']?.toString();
+
+    if (status != 'completed' ||
+        enhancedPath == null ||
+        enhancedPath.trim().isEmpty) {
+      throw Exception(
+        result['message']?.toString() ??
+            'Image enhancement could not be completed.',
+      );
+    }
+
+    return result;
   }
 
   Future<dynamic> selectImage({

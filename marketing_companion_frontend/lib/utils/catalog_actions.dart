@@ -322,18 +322,23 @@ Future<void> requestCatalogImageEnhancement({
   required void Function(String message) updateMessage,
   required String storagePath,
 }) async {
+  if (storagePath.trim().isEmpty) {
+    updateMessage('Upload a product image before enhancing it.');
+    return;
+  }
+
   await runAction(() async {
-    final result = await imageService.requestEnhancement(storagePath);
+    await imageService.requestEnhancement(storagePath);
 
-    if (result is! Map) {
-      throw Exception('Unexpected enhancement response.');
+    updateMessage('Image enhanced successfully.');
+
+    // Enhancement is already complete. Refreshing the product list
+    // should not turn a successful enhancement into a failure message.
+    try {
+      await loadDrafts();
+    } catch (e) {
+      debugPrint('Image enhanced, but product refresh failed: $e');
     }
-
-    updateMessage(
-      result['message']?.toString() ?? 'Enhancement request completed.',
-    );
-
-    await loadDrafts();
   });
 }
 

@@ -377,17 +377,103 @@ class _CatalogScreenState extends State<CatalogScreen> {
     }
   }
 
-  Future<void> requestImageEnhancement(String storagePath) async {
-    await requestCatalogImageEnhancement(
-      imageService: imageService,
-      runAction: runAction,
-      loadDrafts: loadDrafts,
-      updateMessage: (messageText) {
-        if (!mounted) return;
-        setState(() => message = messageText);
-      },
-      storagePath: storagePath,
-    );
+  Future<void> testEditorImageEnhancement() async {
+    if (loading) return;
+
+    await runAction(() async {
+      String? storagePath;
+      var productId = editingProductId;
+
+      // Create a draft if this is a new product.
+      if (productId == null) {
+        final title = titleController.text.trim();
+        final description = descriptionController.text.trim();
+        final category = categoryController.text.trim();
+        final priceText = priceController.text.trim();
+
+        if (title.isEmpty || description.isEmpty) {
+          throw Exception('Enter the product title and description first.');
+        }
+
+        if (selectedImage == null || selectedImageBytes == null) {
+          throw Exception('Choose a product image first.');
+        }
+
+        const categories = {
+          'pottery',
+          'textiles',
+          'weaving',
+          'woodwork',
+          'metalwork',
+          'jewelry',
+          'paintings',
+          'other',
+        };
+
+        if (!categories.contains(category)) {
+          throw Exception('Choose a valid product category.');
+        }
+
+        final price = priceText.isEmpty ? null : double.tryParse(priceText);
+
+        if (priceText.isNotEmpty && (price == null || price < 0)) {
+          throw Exception('Enter a valid price.');
+        }
+
+        final result = await catalogService.createDraft(
+          title: title,
+          description: description,
+          category: category,
+          materials: generatedDraft?['materials'] ?? [],
+          tags: generatedDraft?['tags'] ?? [],
+          price: price,
+        );
+
+        if (result is! Map || result['id'] == null) {
+          throw Exception('Could not create the product draft.');
+        }
+
+        productId = result['id'].toString();
+
+        // Preserve the draft ID even if the subsequent upload fails.
+        setState(() {
+          editingProductId = productId;
+        });
+      }
+
+      // Upload a newly selected image.
+      if (selectedImage != null && selectedImageBytes != null) {
+        storagePath = await imageService.uploadProductImage(
+          productId: productId,
+          image: selectedImage!,
+          bytes: selectedImageBytes!,
+          title: titleController.text.trim(),
+        );
+
+        setState(() {
+          selectedImage = null;
+          selectedImageBytes = null;
+        });
+
+        // Refresh image records so a retry can find the uploaded image.
+        await loadDrafts();
+      } else {
+        // Reuse the image already uploaded for this product.
+        storagePath = draftImagePaths[productId];
+      }
+
+      if (storagePath == null || storagePath.trim().isEmpty) {
+        throw Exception('No uploaded product image was found.');
+      }
+
+      // ImageService validates that enhancement actually completed.
+      await imageService.requestEnhancement(storagePath);
+
+      // Refresh the comparison and selected image information.
+      await loadDrafts();
+
+      _showFeedback('Image enhanced successfully.');
+    });
   }
 
   Future<void> signOut() async {
@@ -846,6 +932,40 @@ class _CatalogScreenState extends State<CatalogScreen> {
     }
   }
 
+  Future<void> selectEditorImage(String selection) async {
+  final productId = editingProductId;
+
+  if (productId == null) return;
+
+  final imageId = draftImageIds[productId];
+
+  if (imageId == null) {
+    _showFeedback('Could not find the product image record.');
+    return;
+  }
+
+  if (selection == 'enhanced' &&
+      draftImageComparisons[productId]?['enhanced_url'] == null) {
+    _showFeedback('Enhance the image before selecting this version.');
+    return;
+  }
+
+  await runAction(() async {
+    await imageService.selectImage(
+      imageId: imageId,
+      selection: selection,
+    );
+
+    await loadDrafts();
+
+    _showFeedback(
+      selection == 'enhanced'
+          ? 'Enhanced image selected.'
+          : 'Original image selected.',
+    );
+  });
+}
+
   @override
   void dispose() {
     inputController.dispose();
@@ -933,14 +1053,34 @@ class _CatalogScreenState extends State<CatalogScreen> {
             editingProductId: editingProductId,
             savedProductId: savedProductId,
             selectedImageBytes: selectedImageBytes,
+
+            originalImageUrl: editingProductId == null
+                ? null
+                : draftImageComparisons[editingProductId]?['original_url']
+                      ?.toString(),
+
+            enhancedImageUrl: editingProductId == null
+                ? null
+                : draftImageComparisons[editingProductId]?['enhanced_url']
+                      ?.toString(),
+
+            selectedImageVersion: editingProductId == null
+                ? 'original'
+                : draftImageComparisons[editingProductId]?['selected_image']
+                          ?.toString() ??
+                      'original',
+
             onPickImage: pickProductImage,
+
             onRemoveImage: () {
               setState(() {
                 selectedImage = null;
                 selectedImageBytes = null;
               });
             },
+
             onSave: saveDraft,
+
             onCancelEditing: () {
               setState(() {
                 editingProductId = null;
@@ -960,6 +1100,16 @@ class _CatalogScreenState extends State<CatalogScreen> {
                 currentView = CatalogView.home;
               });
             },
+
+            canTestEnhancement:
+                selectedImageBytes != null ||
+                (editingProductId != null &&
+                    draftImagePaths.containsKey(editingProductId)),
+
+            onTestImageEnhancement: testEditorImageEnhancement,
+
+            onSelectOriginal: () => selectEditorImage('original'),
+            onSelectEnhanced: () => selectEditorImage('enhanced'),
           ),
 
           const Divider(height: 32),
