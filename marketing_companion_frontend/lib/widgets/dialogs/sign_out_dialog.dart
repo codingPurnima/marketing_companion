@@ -1,7 +1,25 @@
 import 'package:flutter/material.dart';
+import '../../services/speech_service.dart';
 
-class SignOutDialog extends StatelessWidget {
-  const SignOutDialog({super.key});
+class SignOutDialog extends StatefulWidget {
+  final SpeechService speechService;
+
+  const SignOutDialog({super.key, required this.speechService});
+
+  @override
+  State<SignOutDialog> createState() => _SignOutDialogState();
+}
+
+class _SignOutDialogState extends State<SignOutDialog> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      widget.speechService.speak(
+        'Are you sure you want to sign out of your account?',
+      );
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

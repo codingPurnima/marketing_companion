@@ -221,6 +221,7 @@ Future<void> processVoiceCommand({
     context: context,
     title: title,
     publish: publish,
+    speechService: speechService,
   );
 
   if (!mounted) return;

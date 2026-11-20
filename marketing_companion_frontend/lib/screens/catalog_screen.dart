@@ -307,17 +307,32 @@ class _CatalogScreenState extends State<CatalogScreen> {
   }
 
   Future<void> updatePublication(String productId, bool publish) async {
-    await updateCatalogPublication(
-      catalogService: catalogService,
-      runAction: runAction,
-      loadDrafts: loadDrafts,
-      updateMessage: (messageText) {
-        if (!mounted) return;
-        setState(() => message = messageText);
-      },
-      productId: productId,
-      publish: publish,
-    );
+    if (!mounted) return;
+
+    setState(() {
+      loading = true;
+      message = '';
+    });
+
+    try {
+      // Let API errors propagate to processVoiceCommand().
+      await catalogService.updatePublication(
+        productId: productId,
+        publish: publish,
+      );
+
+      // Refresh separately: a refresh failure should not undo
+      // the fact that the publication request succeeded.
+      try {
+        await loadDrafts();
+      } catch (e) {
+        debugPrint('Products refreshed unsuccessfully: $e');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => loading = false);
+      }
+    }
   }
 
   Future<void> requestImageEnhancement(String storagePath) async {
@@ -368,6 +383,30 @@ class _CatalogScreenState extends State<CatalogScreen> {
       },
       productId: productId,
     );
+  }
+
+  Future<void> republishArchivedProductForVoice(String productId) async {
+    if (!mounted) return;
+
+    setState(() {
+      loading = true;
+      message = '';
+    });
+
+    try {
+      // Let API errors propagate to processVoiceCommand().
+      await catalogService.republishArchivedProduct(productId);
+
+      try {
+        await loadDrafts();
+      } catch (e) {
+        debugPrint('Products refreshed unsuccessfully: $e');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => loading = false);
+      }
+    }
   }
 
   @override
@@ -696,7 +735,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
       saveDraft: saveDraft,
       startEditingProduct: (product) async => startEditingProduct(product),
       updatePublication: updatePublication,
-      publishArchivedProduct: publishArchivedProduct,
+      publishArchivedProduct: republishArchivedProductForVoice,
       mounted: mounted,
       isEditorMode: currentView == CatalogView.editor,
       drafts: drafts,
@@ -752,17 +791,17 @@ class _CatalogScreenState extends State<CatalogScreen> {
   Future<bool?> showSignOutDialog(BuildContext context) {
     return showDialog<bool>(
       context: context,
-      builder: (_) => const SignOutDialog(),
+      builder: (_) => SignOutDialog(speechService: speechService),
     );
   }
 
-Future<void> _handleSignOut() async {
-  final shouldSignOut = await showSignOutDialog(context);
+  Future<void> _handleSignOut() async {
+    final shouldSignOut = await showSignOutDialog(context);
 
-  if (shouldSignOut == true && mounted) {
-    await signOut();
+    if (shouldSignOut == true && mounted) {
+      await signOut();
+    }
   }
-}
 
   @override
   void dispose() {
