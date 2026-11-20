@@ -87,32 +87,34 @@ class _CatalogScreenState extends State<CatalogScreen> {
   CatalogView currentView = CatalogView.home;
 
   final ScrollController homeScrollController = ScrollController();
+  final Map<String, GlobalKey> productItemKeys = {};
 
-  void scrollToVoiceMatchedProduct() {
-    if (voiceMatchedProductId == null) return;
+Future<void> scrollToVoiceMatchedProduct() async {
+  final productId = voiceMatchedProductId;
+  if (productId == null || !mounted) return;
 
-    final index = drafts.indexWhere(
-      (product) =>
-          product is Map && product['id']?.toString() == voiceMatchedProductId,
-    );
+  final key = productItemKeys[productId];
+  final targetContext = key?.currentContext;
 
-    if (index < 0 || !homeScrollController.hasClients) return;
+  if (targetContext == null) return;
 
-    final targetOffset = index * 120.0;
+  await Scrollable.ensureVisible(
+    targetContext,
+    duration: const Duration(milliseconds: 600),
+    curve: Curves.easeInOutCubic,
+    alignment: 0.25,
+  );
 
-    homeScrollController
-        .animateTo(
-          targetOffset,
-          duration: const Duration(milliseconds: 500),
-          curve: Curves.easeInOut,
-        )
-        .then((_) {
-          Future.delayed(const Duration(milliseconds: 300), () {
-            if (!mounted) return;
-            setState(() => voiceMatchedProductId = null);
-          });
-        });
-  }
+  if (!mounted || voiceMatchedProductId != productId) return;
+
+  await Future.delayed(const Duration(milliseconds: 1800));
+
+  if (!mounted || voiceMatchedProductId != productId) return;
+
+  setState(() {
+    voiceMatchedProductId = null;
+  });
+}
 
   void startEditingProduct(Map<String, dynamic> product) {
     setState(() {
@@ -703,9 +705,18 @@ class _CatalogScreenState extends State<CatalogScreen> {
         setState(() => message = messageText);
       },
       updateVoiceMatchedProductId: (productId) {
-        if (!mounted) return;
-        setState(() => voiceMatchedProductId = productId);
-      },
+  if (!mounted) return;
+
+  setState(() {
+    voiceMatchedProductId = productId;
+  });
+
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (mounted) {
+      scrollToVoiceMatchedProduct();
+    }
+  });
+},
       goHome: () {
         if (!mounted) return;
         setState(() {
@@ -785,6 +796,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
         initialLoading: initialProductsLoading,
         initialError: initialProductsError,
         onRetry: () => loadDrafts().catchError((_) {}),
+        productItemKeys: productItemKeys,
       );
     }
 

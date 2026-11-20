@@ -33,6 +33,8 @@ class HomeScreen extends StatelessWidget {
   final String? initialError;
   final VoidCallback onRetry;
 
+  final Map<String, GlobalKey> productItemKeys;
+
   const HomeScreen({
     super.key,
     required this.products,
@@ -59,6 +61,7 @@ class HomeScreen extends StatelessWidget {
     required this.initialLoading,
     required this.initialError,
     required this.onRetry,
+    required this.productItemKeys,
   });
 
   @override
@@ -267,6 +270,12 @@ class HomeScreen extends StatelessWidget {
                         vertical: 5,
                       ),
                       child: ProductTile(
+                        key: productId == null
+                            ? null
+                            : productItemKeys.putIfAbsent(
+                                productId,
+                                () => GlobalKey(),
+                              ),
                         title: title,
                         category: category,
                         price: price?.toString(),
@@ -301,84 +310,103 @@ class HomeScreen extends StatelessWidget {
       ),
     );
   }
-
-  List<Widget> _buildProductSection(
-    BuildContext context, {
-    required String title,
-    required List<dynamic> sectionProducts,
-    required String emptyMessage,
-  }) {
-    return [
-      SliverPadding(
-        padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
-        sliver: SliverToBoxAdapter(
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  title,
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
+List<Widget> _buildProductSection(
+  BuildContext context, {
+  required String title,
+  required List<dynamic> sectionProducts,
+  required String emptyMessage,
+}) {
+  return [
+    SliverPadding(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+      sliver: SliverToBoxAdapter(
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                title,
+                style: Theme.of(context).textTheme.titleLarge,
               ),
-              Text(
-                '${sectionProducts.length}',
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            ],
-          ),
-        ),
-      ),
-      if (sectionProducts.isEmpty)
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-            child: Text(
-              emptyMessage,
+            ),
+            Text(
+              '${sectionProducts.length}',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
+          ],
+        ),
+      ),
+    ),
+
+    if (sectionProducts.isEmpty)
+      SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          child: Text(
+            emptyMessage,
+            style: Theme.of(context).textTheme.bodyMedium,
           ),
-        )
-      else
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
-          sliver: SliverList(
-            delegate: SliverChildBuilderDelegate((context, index) {
+        ),
+      )
+    else
+      SliverPadding(
+        padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+        sliver: SliverList(
+          delegate: SliverChildListDelegate(
+            List.generate(sectionProducts.length, (index) {
               final product = Map<String, dynamic>.from(
                 sectionProducts[index] as Map,
               );
 
               final productId = product['id']?.toString();
-              final title = product['title']?.toString() ?? 'Untitled product';
-              final category = product['category']?.toString() ?? 'Other';
-              final status = product['status']?.toString() ?? 'draft';
-              final price = product['price'] ?? product['price_inr'];
 
-              final imageUrl = productId == null ? null : imageUrls[productId];
+              final productTitle =
+                  product['title']?.toString() ?? 'Untitled product';
 
-              final isVoiceMatched =
-                  productId != null && productId == voiceMatchedProductId;
+              final category =
+                  product['category']?.toString() ?? 'Other';
 
-              if (isVoiceMatched && onScrollToProduct != null) {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  onScrollToProduct!.call();
-                });
-              }
+              final status =
+                  product['status']?.toString() ?? 'draft';
+
+              final price =
+                  product['price'] ?? product['price_inr'];
+
+              final imageUrl = productId == null
+                  ? null
+                  : imageUrls[productId];
+
+              final isVoiceMatched = productId != null &&
+                  productId == voiceMatchedProductId;
+
+              final productKey = productId == null
+                  ? null
+                  : productItemKeys.putIfAbsent(
+                      productId,
+                      () => GlobalKey(),
+                    );
 
               return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 5),
+                key: productKey,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 4,
+                  vertical: 5,
+                ),
                 child: ProductTile(
-                  title: title,
+                  title: productTitle,
                   category: category,
                   price: price?.toString(),
                   status: status,
                   imageUrl: imageUrl,
                   highlighted: isVoiceMatched,
-                  onTap: loading ? null : () => onProductTap(product),
+                  onTap: loading
+                      ? null
+                      : () => onProductTap(product),
                 ),
               );
-            }, childCount: sectionProducts.length),
+            }),
           ),
         ),
-    ];
-  }
+      ),
+  ];
+}
 }
