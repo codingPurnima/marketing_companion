@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:marketing_companion_frontend/utils/handle_voice_cmds.dart';
+import 'package:marketing_companion_frontend/widgets/dialogs/sign_out_dialog.dart';
 import '../utils/catalog_actions.dart';
 
 import '../services/api_service.dart';
@@ -89,32 +90,32 @@ class _CatalogScreenState extends State<CatalogScreen> {
   final ScrollController homeScrollController = ScrollController();
   final Map<String, GlobalKey> productItemKeys = {};
 
-Future<void> scrollToVoiceMatchedProduct() async {
-  final productId = voiceMatchedProductId;
-  if (productId == null || !mounted) return;
+  Future<void> scrollToVoiceMatchedProduct() async {
+    final productId = voiceMatchedProductId;
+    if (productId == null || !mounted) return;
 
-  final key = productItemKeys[productId];
-  final targetContext = key?.currentContext;
+    final key = productItemKeys[productId];
+    final targetContext = key?.currentContext;
 
-  if (targetContext == null) return;
+    if (targetContext == null) return;
 
-  await Scrollable.ensureVisible(
-    targetContext,
-    duration: const Duration(milliseconds: 600),
-    curve: Curves.easeInOutCubic,
-    alignment: 0.25,
-  );
+    await Scrollable.ensureVisible(
+      targetContext,
+      duration: const Duration(milliseconds: 600),
+      curve: Curves.easeInOutCubic,
+      alignment: 0.25,
+    );
 
-  if (!mounted || voiceMatchedProductId != productId) return;
+    if (!mounted || voiceMatchedProductId != productId) return;
 
-  await Future.delayed(const Duration(milliseconds: 1800));
+    await Future.delayed(const Duration(milliseconds: 1800));
 
-  if (!mounted || voiceMatchedProductId != productId) return;
+    if (!mounted || voiceMatchedProductId != productId) return;
 
-  setState(() {
-    voiceMatchedProductId = null;
-  });
-}
+    setState(() {
+      voiceMatchedProductId = null;
+    });
+  }
 
   void startEditingProduct(Map<String, dynamic> product) {
     setState(() {
@@ -705,18 +706,18 @@ Future<void> scrollToVoiceMatchedProduct() async {
         setState(() => message = messageText);
       },
       updateVoiceMatchedProductId: (productId) {
-  if (!mounted) return;
+        if (!mounted) return;
 
-  setState(() {
-    voiceMatchedProductId = productId;
-  });
+        setState(() {
+          voiceMatchedProductId = productId;
+        });
 
-  WidgetsBinding.instance.addPostFrameCallback((_) {
-    if (mounted) {
-      scrollToVoiceMatchedProduct();
-    }
-  });
-},
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            scrollToVoiceMatchedProduct();
+          }
+        });
+      },
       goHome: () {
         if (!mounted) return;
         setState(() {
@@ -747,6 +748,21 @@ Future<void> scrollToVoiceMatchedProduct() async {
 
     return null;
   }
+
+  Future<bool?> showSignOutDialog(BuildContext context) {
+    return showDialog<bool>(
+      context: context,
+      builder: (_) => const SignOutDialog(),
+    );
+  }
+
+Future<void> _handleSignOut() async {
+  final shouldSignOut = await showSignOutDialog(context);
+
+  if (shouldSignOut == true && mounted) {
+    await signOut();
+  }
+}
 
   @override
   void dispose() {
@@ -787,7 +803,7 @@ Future<void> scrollToVoiceMatchedProduct() async {
             MaterialPageRoute(builder: (_) => const ProfileScreen()),
           );
         },
-        onSignOut: signOut,
+        onSignOut: _handleSignOut,
         archivedProducts: archivedProducts,
         onRepublishArchived: publishArchivedProduct,
         voiceMatchedProductId: voiceMatchedProductId,
