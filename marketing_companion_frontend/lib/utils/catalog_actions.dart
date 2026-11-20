@@ -54,6 +54,7 @@ Future<void> saveCatalogDraft({
   required Future<void> Function() loadDrafts,
   required void Function(String message) updateMessage,
   required void Function(void Function()) updateState,
+  required void Function() onProductUpdated,
   required Future<void> Function(String productId) uploadProductImage,
   required String? editingProductId,
   required String? savedProductId,
@@ -113,6 +114,7 @@ Future<void> saveCatalogDraft({
         categoryController.text = 'other';
         priceController.clear();
         updateMessage('Product updated successfully.');
+        onProductUpdated();
       });
 
       await loadDrafts();

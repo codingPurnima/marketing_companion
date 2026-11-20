@@ -155,46 +155,42 @@ class _CatalogScreenState extends State<CatalogScreen> {
     });
   }
 
-void _showFeedback(String text) {
-  if (!mounted || text.trim().isEmpty) return;
+  void _showFeedback(String text) {
+    if (!mounted || text.trim().isEmpty) return;
 
-  final overlay = Overlay.of(context);
+    final overlay = Overlay.of(context);
 
-  late OverlayEntry entry;
+    late OverlayEntry entry;
 
-  entry = OverlayEntry(
-    builder: (context) => Positioned(
-      top: MediaQuery.of(context).padding.top + kToolbarHeight + 8,
-      left: 16,
-      right: 16,
-      child: Material(
-        elevation: 6,
-        borderRadius: BorderRadius.circular(12),
-        color: Theme.of(context).colorScheme.inverseSurface,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 12,
-          ),
-          child: Text(
-            text,
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onInverseSurface,
+    entry = OverlayEntry(
+      builder: (context) => Positioned(
+        top: MediaQuery.of(context).padding.top + kToolbarHeight + 8,
+        left: 16,
+        right: 16,
+        child: Material(
+          elevation: 6,
+          borderRadius: BorderRadius.circular(12),
+          color: Theme.of(context).colorScheme.inverseSurface,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Text(
+              text,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onInverseSurface,
+              ),
             ),
           ),
         ),
       ),
-    ),
-  );
+    );
 
-  overlay.insert(entry);
+    overlay.insert(entry);
 
-  Future.delayed(const Duration(seconds: 3), () {
-    entry.remove();
-    entry.dispose();
-  });
-}
-
+    Future.delayed(const Duration(seconds: 3), () {
+      entry.remove();
+      entry.dispose();
+    });
+  }
 
   Future<void> runAction(Future<void> Function() action) async {
     if (!mounted) return;
@@ -279,6 +275,10 @@ void _showFeedback(String text) {
       updateState: (updater) {
         if (!mounted) return;
         setState(updater);
+      },
+      onProductUpdated: () {
+        if (!mounted) return;
+        currentView = CatalogView.home;
       },
       uploadProductImage: uploadProductImage,
       editingProductId: editingProductId,
@@ -701,7 +701,7 @@ void _showFeedback(String text) {
     if (transcript.isEmpty || loading) return;
 
     // Step 1: Ask Gemini to understand the command.
-    VoiceCommandResult? interpretation;
+    VoiceCommandResult interpretation;
 
     setState(() {
       loading = true;
@@ -724,8 +724,6 @@ void _showFeedback(String text) {
         setState(() => loading = false);
       }
     }
-
-    if (!mounted || interpretation == null) return;
 
     // Step 2: Handle unclear commands.
     if (interpretation.needsClarification) {
