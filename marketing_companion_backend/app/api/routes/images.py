@@ -145,7 +145,6 @@ def create_signed_url(
 
     return signed_url
 
-
 @router.post("/enhance")
 def enhance_image(
     request: EnhancementRequest,
@@ -155,6 +154,7 @@ def enhance_image(
     headers = get_supabase_headers(context)
     base_url = settings.supabase_url.rstrip("/")
 
+    # 1. Verify that the image exists.
     try:
         image_response = httpx.get(
             f"{base_url}/rest/v1/product_images",
@@ -170,13 +170,18 @@ def enhance_image(
             timeout=15,
         )
         image_response.raise_for_status()
+
         images = image_response.json()
 
         if not images:
-            raise HTTPException(status_code=404, detail="Image not found.")
+            raise HTTPException(
+                status_code=404,
+                detail="Image not found. Upload a product image first.",
+            )
 
         image = images[0]
 
+        # 2. Verify product ownership.
         product_response = httpx.get(
             f"{base_url}/rest/v1/products",
             headers=headers,
@@ -204,6 +209,7 @@ def enhance_image(
             detail="Could not verify image ownership with Supabase.",
         ) from exc
 
+    # 3. Mark enhancement as processing.
     try:
         update_image_record(
             base_url,
@@ -211,38 +217,16 @@ def enhance_image(
             image["id"],
             {"enhancement_status": "processing"},
         )
-    except (httpx.HTTPError, HTTPException) as exc:
+    except Exception as exc:
         raise HTTPException(
             status_code=503,
             detail="Could not update the image enhancement status.",
         ) from exc
 
+    # 4. Run the actual enhancement.
     try:
         provider = get_image_enhancement_provider(context.access_token)
         result = provider.enhance(image["storage_path"])
-
-        if result.status == "mock":
-            update_image_record(
-                base_url,
-                headers,
-                image["id"],
-                {"enhancement_status": "not_requested"},
-            )
-
-        elif result.status == "completed" and result.enhanced_storage_path:
-            update_image_record(
-                base_url,
-                headers,
-                image["id"],
-                {
-                    "enhancement_status": "completed",
-                    "enhanced_storage_path": result.enhanced_storage_path,
-                    "is_enhanced_selected": False,
-                },
-            )
-
-        else:
-            raise ValueError("The provider returned an invalid result.")
 
     except Exception as exc:
         logger.exception(
@@ -258,23 +242,102 @@ def enhance_image(
                 {"enhancement_status": "failed"},
             )
         except Exception:
-            logger.exception("Could not update image enhancement status.")
-
-        if isinstance(exc, HTTPException):
-            raise exc
+            logger.exception(
+                "Could not update image enhancement status."
+            )
 
         raise HTTPException(
             status_code=502,
-            detail="Image enhancement failed. Your original image is safe.",
+            detail=(
+                "Image enhancement failed. "
+                "Your original image is safe."
+            ),
+        ) from exc
+
+    # 5. A mock result is NOT a successful enhancement.
+    if result.status == "mock":
+        try:
+            update_image_record(
+                base_url,
+                headers,
+                image["id"],
+                {"enhancement_status": "not_requested"},
+            )
+        except Exception:
+            logger.exception(
+                "Could not reset mock enhancement status."
+            )
+
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Image enhancement is currently disabled. "
+                "Configure the Cloudinary provider to use this feature."
+            ),
+        )
+
+    # 6. Reject incomplete or unexpected provider results.
+    if (
+        result.status != "completed"
+        or not result.enhanced_storage_path
+    ):
+        try:
+            update_image_record(
+                base_url,
+                headers,
+                image["id"],
+                {"enhancement_status": "failed"},
+            )
+        except Exception:
+            logger.exception(
+                "Could not mark invalid enhancement result as failed."
+            )
+
+        raise HTTPException(
+            status_code=502,
+            detail="The enhancement provider returned an invalid result.",
+        )
+
+    # 7. Save the completed enhanced image path.
+    try:
+        update_image_record(
+            base_url,
+            headers,
+            image["id"],
+            {
+                "enhancement_status": "completed",
+                "enhanced_storage_path": result.enhanced_storage_path,
+                "is_enhanced_selected": False,
+            },
+        )
+    except Exception as exc:
+        logger.exception(
+            "Could not save enhanced image record for image_id=%s",
+            image["id"],
+        )
+
+        try:
+            update_image_record(
+                base_url,
+                headers,
+                image["id"],
+                {"enhancement_status": "failed"},
+            )
+        except Exception:
+            logger.exception(
+                "Could not mark enhancement as failed."
+            )
+
+        raise HTTPException(
+            status_code=503,
+            detail="Enhanced image was generated but its record could not be saved.",
         ) from exc
 
     return {
-        "status": result.status,
+        "status": "completed",
         "enhanced_storage_path": result.enhanced_storage_path,
         "message": result.message,
     }
-
-
 @router.get("/{image_id}/comparison")
 def get_image_comparison(
     image_id: str,

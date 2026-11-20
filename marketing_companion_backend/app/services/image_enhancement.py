@@ -14,6 +14,8 @@ import cloudinary.uploader
 from app.core.config import get_settings
 import time
 
+from io import BytesIO
+
 
 @dataclass
 class EnhancementResult:
@@ -89,9 +91,11 @@ class CloudinaryImageEnhancementProvider:
 
         return signed_url
 
-    def _upload_to_cloudinary(self, signed_url: str) -> dict:
+    def _upload_to_cloudinary(self, image_bytes: bytes) -> dict:
+        image_file = BytesIO(image_bytes)
+
         result = cloudinary.uploader.upload(
-            signed_url,
+            image_file,
             resource_type="image",
             folder="artisan-enhancement-temp",
             unique_filename=True,
@@ -107,14 +111,28 @@ class CloudinaryImageEnhancementProvider:
 
         eager_results = result.get("eager", [])
 
-        if not eager_results or not eager_results[0].get("secure_url"):
+        if not eager_results:
             raise RuntimeError(
-                "Cloudinary did not return an enhanced image."
+                "Cloudinary did not generate the enhanced image."
+            )
+
+        enhanced_url = eager_results[0].get("secure_url")
+
+        if not enhanced_url:
+            raise RuntimeError(
+                "Cloudinary did not return the enhanced image URL."
+            )
+
+        # Verify that the requested AI transformation is present.
+        if "e_auto_enhance" not in enhanced_url:
+            raise RuntimeError(
+                "Cloudinary returned an image without the requested "
+                "AI enhancement transformation."
             )
 
         return {
             "public_id": result["public_id"],
-            "enhanced_url": eager_results[0]["secure_url"],
+            "enhanced_url": enhanced_url,
         }
 
     def _download_and_upload(
@@ -205,16 +223,46 @@ class CloudinaryImageEnhancementProvider:
         cloudinary_public_id = None
 
         try:
+            # 1. Generate a temporary signed URL from Supabase.
             signed_url = self._create_signed_url(original_storage_path)
 
-            cloudinary_result = self._upload_to_cloudinary(signed_url)
+            # 2. Download the actual original image.
+            original_response = httpx.get(
+                signed_url,
+                follow_redirects=True,
+                timeout=60,
+            )
+            original_response.raise_for_status()
+
+            content_type = original_response.headers.get(
+                "content-type", ""
+            ).split(";")[0].lower()
+
+            if not content_type.startswith("image/"):
+                raise RuntimeError(
+                    f"Supabase returned an invalid image type: {content_type}"
+                )
+
+            if not original_response.content:
+                raise RuntimeError("The original image is empty.")
+
+            # 3. Upload actual image bytes to Cloudinary.
+            cloudinary_result = self._upload_to_cloudinary(
+                original_response.content
+            )
 
             cloudinary_public_id = cloudinary_result["public_id"]
 
+            # 4. Download the transformed image and save it to Supabase.
             enhanced_path = self._download_and_upload(
                 cloudinary_result["enhanced_url"],
                 original_storage_path,
             )
+
+            if not enhanced_path:
+                raise RuntimeError(
+                    "The enhanced image was not saved to Supabase."
+                )
 
             return EnhancementResult(
                 status="completed",
@@ -223,7 +271,7 @@ class CloudinaryImageEnhancementProvider:
             )
 
         finally:
-            # Cloudinary is used temporarily.
+            # Cloudinary is temporary storage.
             # Supabase remains the permanent image storage.
             if cloudinary_public_id:
                 try:
@@ -236,15 +284,15 @@ class CloudinaryImageEnhancementProvider:
                     pass
 
 
-def get_image_enhancement_provider(
-    access_token: str,
-) -> ImageEnhancementProvider:
-    settings = get_settings()
+    def get_image_enhancement_provider(
+        access_token: str,
+    ) -> ImageEnhancementProvider:
+        settings = get_settings()
 
-    if settings.image_enhancement_provider == "mock":
-        return MockImageEnhancementProvider()
+        if settings.image_enhancement_provider == "mock":
+            return MockImageEnhancementProvider()
 
-    if settings.image_enhancement_provider == "cloudinary":
-        return CloudinaryImageEnhancementProvider(access_token)
+        if settings.image_enhancement_provider == "cloudinary":
+            return CloudinaryImageEnhancementProvider(access_token)
 
-    raise ValueError("Unsupported image enhancement provider.")
+        raise ValueError("Unsupported image enhancement provider.")
