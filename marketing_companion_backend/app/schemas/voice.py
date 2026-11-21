@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 
 
 VoiceIntent = Literal[
+    "add_product",
     "list_products",
     "find_product",
     "edit_product",
