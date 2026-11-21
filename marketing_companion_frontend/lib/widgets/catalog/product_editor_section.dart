@@ -97,7 +97,6 @@ class _ProductEditorSectionState extends State<ProductEditorSection> {
               : 'other',
           decoration: const InputDecoration(
             labelText: 'Product Category',
-            border: OutlineInputBorder(),
           ),
           items: const [
             DropdownMenuItem(value: 'pottery', child: Text('Pottery')),

@@ -44,7 +44,6 @@ class CatalogGenerationSection extends StatelessWidget {
                   labelText: 'Describe your product',
                   hintText:
                       'I make handmade blue pottery bowls. Each costs 500 rupees...',
-                  border: OutlineInputBorder(),
                 ),
               ),
             ),

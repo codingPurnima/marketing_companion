@@ -1,11 +1,12 @@
 
 import 'package:flutter/material.dart';
+import 'package:marketing_companion_frontend/config/app_config.dart';
+import 'package:marketing_companion_frontend/controllers/voice_assistant_controller.dart';
+import 'package:marketing_companion_frontend/screens/catalog_screen.dart';
+import 'package:marketing_companion_frontend/screens/login_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'config/app_config.dart';
-import 'controllers/voice_assistant_controller.dart';
-import 'screens/catalog_screen.dart';
-import 'screens/login_screen.dart';
+import 'app/theme.dart';
 
 class ArtisanApp extends StatefulWidget {
   const ArtisanApp({super.key});
@@ -34,10 +35,7 @@ class _ArtisanAppState extends State<ArtisanApp> {
     return MaterialApp(
       title: 'Artisan Catalog Prototype',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
-        useMaterial3: true,
-      ),
+      theme: appTheme, // use centralized theme
       home: StreamBuilder<AuthState>(
         stream: supabase.auth.onAuthStateChange,
         builder: (context, snapshot) {
