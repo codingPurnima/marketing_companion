@@ -511,6 +511,7 @@ class _DiscoverPageState extends State<DiscoverPage> {
               itemCount: products.length,
               itemBuilder: (context, index) {
                 return ProductCard(
+                  key: ValueKey(products[index]['id']),
                   product: products[index],
                   getProductImage: getProductImage,
                   isWide: columns == 1,
@@ -587,6 +588,24 @@ class ProductCard extends StatefulWidget {
 
 class _ProductCardState extends State<ProductCard> {
   bool _hovered = false;
+  Future<String?>? _imageFuture;
+String? _imagePathKey;
+
+Future<String?> _getCachedImageFuture(
+  Map<String, dynamic> image,
+) {
+  final pathKey =
+      '${image['is_enhanced_selected']}|'
+      '${image['enhanced_storage_path']}|'
+      '${image['storage_path']}';
+
+  if (_imageFuture == null || _imagePathKey != pathKey) {
+    _imagePathKey = pathKey;
+    _imageFuture = widget.getProductImage(image);
+  }
+
+  return _imageFuture!;
+}
 
   @override
   Widget build(BuildContext context) {
@@ -660,7 +679,7 @@ class _ProductCardState extends State<ProductCard> {
             children: [
               images.isNotEmpty
                   ? FutureBuilder<String?>(
-                      future: widget.getProductImage(images.first),
+                      future: _getCachedImageFuture(images.first),
                       builder: (context, snapshot) {
                         if (snapshot.hasData && snapshot.data != null) {
                           return AnimatedScale(
@@ -767,7 +786,7 @@ class _ProductCardState extends State<ProductCard> {
           height: double.infinity,
           child: images.isNotEmpty
               ? FutureBuilder<String?>(
-                  future: widget.getProductImage(images.first),
+                  future: _getCachedImageFuture(images.first),
                   builder: (context, snapshot) {
                     if (snapshot.hasData && snapshot.data != null) {
                       return Image.network(
