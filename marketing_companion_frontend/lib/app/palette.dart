@@ -9,7 +9,16 @@ class AppPalette {
   static const Color terracotta = Color(0xFFB5553C);
 
   // Deep indigo – secondary accent (app bar, icons)
+  static const Color mutedMustard = Color(0xFFBFAE33);
   static const Color deepIndigo = Color(0xFF283593);
+  // Sand – subtle border / divider colour
+  static const Color sand = Color(0xFFDEB887);
+  // Charcoal brown – primary text colour
+  static const Color charcoalBrown = Color(0xFF4B3A32);
+  // Warm grey – secondary text colour
+  static const Color warmGrey = Color(0xFF8A7F78);
+
+
 
   // Sage green – focus / input border
   static const Color sageGreen = Color(0xFF6B8E23);

@@ -8,14 +8,14 @@ final ThemeData appTheme = ThemeData(
   // -------------------------------------------------------------
   colorScheme: const ColorScheme(
     primary: AppPalette.terracotta,
-    secondary: AppPalette.deepIndigo,
+    secondary: AppPalette.mutedMustard,
     surface: AppPalette.warmIvory,
     background: AppPalette.warmIvory,
     error: AppPalette.error,
     onPrimary: Colors.white,
     onSecondary: Colors.white,
-    onSurface: Colors.black87,
-    onBackground: Colors.black87,
+    onSurface: AppPalette.charcoalBrown,
+    onBackground: AppPalette.charcoalBrown,
     onError: Colors.white,
     brightness: Brightness.light,
   ),
@@ -41,29 +41,29 @@ final ThemeData appTheme = ThemeData(
     headlineLarge: TextStyle(
       fontSize: 26,
       fontWeight: FontWeight.w600,
-      color: AppPalette.deepIndigo,
+      color: AppPalette.charcoalBrown,
     ),
     // Section headings inside screens
     titleLarge: TextStyle(
       fontSize: 22,
       fontWeight: FontWeight.w500,
-      color: AppPalette.deepIndigo,
+      color: AppPalette.charcoalBrown,
     ),
     // Form field labels / smaller headings
     titleMedium: TextStyle(
       fontSize: 18,
       fontWeight: FontWeight.w500,
-      color: Colors.black87,
+      color: AppPalette.charcoalBrown,
     ),
     // Body text
     bodyLarge: TextStyle(
       fontSize: 16,
-      color: Colors.black87,
+      color: AppPalette.charcoalBrown,
     ),
     // Small helper / caption text
     bodySmall: TextStyle(
       fontSize: 14,
-      color: Colors.black54,
+      color: AppPalette.warmGrey,
     ),
   ),
 
@@ -86,8 +86,8 @@ final ThemeData appTheme = ThemeData(
   // -------------------------------------------------------------
   outlinedButtonTheme: OutlinedButtonThemeData(
     style: OutlinedButton.styleFrom(
-      foregroundColor: AppPalette.deepIndigo,
-      side: const BorderSide(color: AppPalette.sageGreen),
+      foregroundColor: AppPalette.charcoalBrown,
+      side: const BorderSide(color: AppPalette.sand),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
       ),
@@ -96,24 +96,33 @@ final ThemeData appTheme = ThemeData(
   ),
 
   // -------------------------------------------------------------
-  // Input fields – outlined with sage‑green focus colour
+  // Input fields – outlined with terracotta focus colour, sand default border
   // -------------------------------------------------------------
   inputDecorationTheme: const InputDecorationTheme(
     border: OutlineInputBorder(
       borderRadius: BorderRadius.all(Radius.circular(8)),
     ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.all(Radius.circular(8)),
+      borderSide: BorderSide(color: AppPalette.sand, width: 1),
+    ),
     focusedBorder: OutlineInputBorder(
-      borderSide: BorderSide(color: AppPalette.sageGreen, width: 2),
+      borderSide: BorderSide(color: AppPalette.terracotta, width: 2),
       borderRadius: BorderRadius.all(Radius.circular(8)),
     ),
-    labelStyle: TextStyle(color: AppPalette.deepIndigo),
+    errorBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.all(Radius.circular(8)),
+      borderSide: BorderSide(color: Colors.red, width: 2),
+    ),
+    labelStyle: TextStyle(color: AppPalette.charcoalBrown),
+    hintStyle: TextStyle(color: AppPalette.warmGrey),
   ),
 
   // -------------------------------------------------------------
-  // AppBar – deep indigo background, white title text
+  // AppBar – muted mustard background, white title text
   // -------------------------------------------------------------
   appBarTheme: const AppBarTheme(
-    backgroundColor: AppPalette.deepIndigo,
+    backgroundColor: AppPalette.mutedMustard,
     foregroundColor: Colors.white,
     elevation: 2,
     titleTextStyle: TextStyle(
@@ -131,6 +140,7 @@ final ThemeData appTheme = ThemeData(
     elevation: 2,
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(12),
+      side: BorderSide(color: AppPalette.sand, width: 1),
     ),
     color: AppPalette.warmIvory,
     surfaceTintColor: AppPalette.warmIvory,
@@ -142,7 +152,7 @@ final ThemeData appTheme = ThemeData(
   // -------------------------------------------------------------
   dividerTheme: const DividerThemeData(
     thickness: 1,
-    color: Color(0xFFE0E0E0),
+    color: AppPalette.sand,
     space: 24,
   ),
 );
