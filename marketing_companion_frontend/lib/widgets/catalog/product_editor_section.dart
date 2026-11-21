@@ -67,7 +67,7 @@ class _ProductEditorSectionState extends State<ProductEditorSection> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          isEditing ? 'Edit product' : '2. Review and edit draft',
+          isEditing ? 'View and Edit product' : 'Review and edit draft',
           style: Theme.of(context).textTheme.titleLarge,
         ),
 
@@ -79,6 +79,8 @@ class _ProductEditorSectionState extends State<ProductEditorSection> {
             labelText: 'Product title',
           ),
         ),
+
+        const SizedBox(height: 12),
 
         TextField(
           controller: widget.descriptionController,
@@ -118,6 +120,8 @@ class _ProductEditorSectionState extends State<ProductEditorSection> {
                   }
                 },
         ),
+
+        const SizedBox(height: 12),
 
         TextField(
           controller: widget.priceController,

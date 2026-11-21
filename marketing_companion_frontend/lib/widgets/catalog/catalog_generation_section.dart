@@ -29,7 +29,7 @@ class CatalogGenerationSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '1. Generate catalog',
+          'Speak to generate catalog',
           style: Theme.of(context).textTheme.titleLarge,
         ),
         Row(
