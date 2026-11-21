@@ -284,15 +284,15 @@ class CloudinaryImageEnhancementProvider:
                     pass
 
 
-    def get_image_enhancement_provider(
-        access_token: str,
-    ) -> ImageEnhancementProvider:
-        settings = get_settings()
+def get_image_enhancement_provider(
+    access_token: str,
+) -> ImageEnhancementProvider:
+    settings = get_settings()
 
-        if settings.image_enhancement_provider == "mock":
-            return MockImageEnhancementProvider()
+    if settings.image_enhancement_provider == "mock":
+        return MockImageEnhancementProvider()
 
-        if settings.image_enhancement_provider == "cloudinary":
-            return CloudinaryImageEnhancementProvider(access_token)
+    if settings.image_enhancement_provider == "cloudinary":
+        return CloudinaryImageEnhancementProvider(access_token)
 
-        raise ValueError("Unsupported image enhancement provider.")
+    raise ValueError("Unsupported image enhancement provider.")
