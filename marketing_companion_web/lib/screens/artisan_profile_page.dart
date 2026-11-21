@@ -4,15 +4,13 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'product_detail_page.dart';
 
+import 'package:marketing_companion_web/utils/product_image_urls.dart';
+
 class ArtisanProfilePage extends StatefulWidget {
   final String ownerId;
   final Map<String, dynamic>? artisan;
 
-  const ArtisanProfilePage({
-    super.key,
-    required this.ownerId,
-    this.artisan,
-  });
+  const ArtisanProfilePage({super.key, required this.ownerId, this.artisan});
 
   @override
   State<ArtisanProfilePage> createState() => _ArtisanProfilePageState();
@@ -94,32 +92,14 @@ class _ArtisanProfilePageState extends State<ArtisanProfilePage> {
     return List<Map<String, dynamic>>.from(response);
   }
 
-  Future<String?> getImageUrl(Map<String, dynamic> image) async {
-    try {
-      final useEnhanced = image['is_enhanced_selected'] == true &&
-          image['enhanced_storage_path'] != null;
-
-      final path = useEnhanced
-          ? image['enhanced_storage_path']
-          : image['storage_path'];
-
-      if (path == null) return null;
-
-      return await supabase.storage
-          .from('product-images')
-          .createSignedUrl(path, 3600);
-    } catch (e) {
-      debugPrint('PROFILE IMAGE ERROR: $e');
-      return null;
-    }
+  Future<String?> getImageUrl(Map<String, dynamic> image) {
+    return ProductImageUrls.getUrl(image);
   }
 
   void openProduct(Map<String, dynamic> product) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => ProductDetailPage(product: product),
-      ),
+      MaterialPageRoute(builder: (_) => ProductDetailPage(product: product)),
     );
   }
 
@@ -196,9 +176,10 @@ class _ArtisanProfilePageState extends State<ArtisanProfilePage> {
     final district = artisan['district'] as String?;
     final state = artisan['state'] as String?;
 
-    final location = [district, state]
-        .where((v) => v != null && v.isNotEmpty)
-        .join(', ');
+    final location = [
+      district,
+      state,
+    ].where((v) => v != null && v.isNotEmpty).join(', ');
 
     return Container(
       decoration: BoxDecoration(
@@ -219,10 +200,7 @@ class _ArtisanProfilePageState extends State<ArtisanProfilePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      name,
-                      style: AppTextStyles.headingLarge,
-                    ),
+                    Text(name, style: AppTextStyles.headingLarge),
                     if (craft != null) ...[
                       const SizedBox(height: 8),
                       CraftBadge(label: craft),
@@ -237,10 +215,7 @@ class _ArtisanProfilePageState extends State<ArtisanProfilePage> {
                             color: AppColors.textMuted,
                           ),
                           const SizedBox(width: 4),
-                          Text(
-                            location,
-                            style: AppTextStyles.bodySmall,
-                          ),
+                          Text(location, style: AppTextStyles.bodySmall),
                         ],
                       ),
                     ],
@@ -252,20 +227,11 @@ class _ArtisanProfilePageState extends State<ArtisanProfilePage> {
 
           if (bio != null && bio.isNotEmpty) ...[
             const SizedBox(height: 20),
-            Container(
-              height: 1,
-              color: AppColors.divider,
-            ),
+            Container(height: 1, color: AppColors.divider),
             const SizedBox(height: 20),
-            Text(
-              'About',
-              style: AppTextStyles.sectionLabel,
-            ),
+            Text('About', style: AppTextStyles.sectionLabel),
             const SizedBox(height: 8),
-            Text(
-              bio,
-              style: AppTextStyles.bodyLarge,
-            ),
+            Text(bio, style: AppTextStyles.bodyLarge),
           ],
         ],
       ),
@@ -336,8 +302,8 @@ class _ArtisanProfilePageState extends State<ArtisanProfilePage> {
                 final product = products[index];
                 final productImages =
                     (product['product_images'] as List?)
-                            ?.cast<Map<String, dynamic>>() ??
-                        [];
+                        ?.cast<Map<String, dynamic>>() ??
+                    [];
 
                 productImages.sort(
                   (a, b) =>
@@ -376,10 +342,7 @@ class _ArtisanProfilePageState extends State<ArtisanProfilePage> {
             color: AppColors.textMuted,
           ),
           const SizedBox(height: 16),
-          Text(
-            'No products yet',
-            style: AppTextStyles.headingSmall,
-          ),
+          Text('No products yet', style: AppTextStyles.headingSmall),
           const SizedBox(height: 8),
           Text(
             'This artisan has not published any products yet.',
@@ -483,7 +446,8 @@ class _ProfileProductCardState extends State<_ProfileProductCard> {
                                   color: AppColors.surfaceWarm,
                                   child: const Center(
                                     child: CircularProgressIndicator(
-                                        strokeWidth: 2),
+                                      strokeWidth: 2,
+                                    ),
                                   ),
                                 );
                               }
@@ -515,8 +479,9 @@ class _ProfileProductCardState extends State<_ProfileProductCard> {
                         product['title'] ?? 'Untitled',
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style:
-                            AppTextStyles.headingSmall.copyWith(fontSize: 14),
+                        style: AppTextStyles.headingSmall.copyWith(
+                          fontSize: 14,
+                        ),
                       ),
                       Text(
                         '${product['currency'] ?? 'INR'} ${product['price'] ?? '—'}',

@@ -4,6 +4,7 @@ import 'package:marketing_companion_web/theme/app_theme.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:marketing_companion_web/screens/discover_page.dart';
+import 'package:marketing_companion_web/utils/product_image_urls.dart';
 
 class ProductDetailPage extends StatefulWidget {
   final Map<String, dynamic> product;
@@ -121,25 +122,8 @@ My question:
     }
   }
 
-  Future<String?> getImageUrl(Map<String, dynamic> image) async {
-    try {
-      final useEnhanced =
-          image['is_enhanced_selected'] == true &&
-          image['enhanced_storage_path'] != null;
-
-      final path = useEnhanced
-          ? image['enhanced_storage_path']
-          : image['storage_path'];
-
-      if (path == null) return null;
-
-      return await supabase.storage
-          .from('product-images')
-          .createSignedUrl(path, 3600);
-    } catch (e) {
-      debugPrint('IMAGE URL ERROR: $e');
-      return null;
-    }
+  Future<String?> getImageUrl(Map<String, dynamic> image) {
+    return ProductImageUrls.getUrl(image);
   }
 
   @override

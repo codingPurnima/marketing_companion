@@ -3,6 +3,7 @@ import 'package:marketing_companion_web/screens/artisan_directory_page.dart';
 import 'package:marketing_companion_web/screens/product_detail_page.dart';
 import 'package:marketing_companion_web/theme/app_theme.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:marketing_companion_web/utils/product_image_urls.dart';
 
 class DiscoverPage extends StatefulWidget {
   const DiscoverPage({super.key});
@@ -47,24 +48,26 @@ class _DiscoverPageState extends State<DiscoverPage> {
     String? category,
     String search = '',
   }) async {
-    dynamic query = supabase
+    var query = supabase
         .from('products')
         .select('''
-      id,
-      title,
-      description,
-      category,
-      price,
-      currency,
-      product_images (
         id,
-        storage_path,
-        enhanced_storage_path,
-        is_enhanced_selected,
-        sort_order,
-        alt_text
-      )
-    ''')
+        owner_id,
+        title,
+        description,
+        category,
+        price,
+        currency,
+        published_at,
+        product_images (
+          id,
+          storage_path,
+          enhanced_storage_path,
+          is_enhanced_selected,
+          sort_order,
+          alt_text
+        )
+      ''')
         .eq('status', 'published');
 
     if (category != null) {
@@ -76,46 +79,13 @@ class _DiscoverPageState extends State<DiscoverPage> {
       query = query.or('title.ilike.%$term%,description.ilike.%$term%');
     }
 
-    final response = await query.select('''
-      id,
-      owner_id,
-      title,
-      description,
-      category,
-      price,
-      currency,
-      published_at,
-      product_images (
-        id,
-        storage_path,
-        enhanced_storage_path,
-        is_enhanced_selected,
-        sort_order,
-        alt_text
-      )
-    ''');
+    final response = await query.order('published_at', ascending: false);
+
     return List<Map<String, dynamic>>.from(response);
   }
 
-  Future<String?> getProductImage(Map<String, dynamic> image) async {
-    try {
-      final useEnhanced =
-          image['is_enhanced_selected'] == true &&
-          image['enhanced_storage_path'] != null;
-
-      final path = useEnhanced
-          ? image['enhanced_storage_path']
-          : image['storage_path'];
-
-      if (path == null) return null;
-
-      return await supabase.storage
-          .from('product-images')
-          .createSignedUrl(path, 3600);
-    } catch (e) {
-      debugPrint('IMAGE FETCH ERROR: $e');
-      return null;
-    }
+  Future<String?> getProductImage(Map<String, dynamic> image) {
+    return ProductImageUrls.getUrl(image);
   }
 
   void applyFilters() {
