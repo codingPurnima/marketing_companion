@@ -1,8 +1,8 @@
-
 import '../utils/product_matcher.dart';
 import '../models/voice_command_result.dart';
 
 enum VoiceCommandType {
+  addProduct,
   listProducts,
   saveDraft,
   listArchived,
@@ -19,11 +19,7 @@ class VoiceCommand {
   final String? productName;
   final VoiceCommandUpdates? updates;
 
-  const VoiceCommand(
-    this.type, {
-    this.productName,
-    this.updates,
-  });
+  const VoiceCommand(this.type, {this.productName, this.updates});
 }
 
 class VoiceCommandService {
@@ -32,6 +28,23 @@ class VoiceCommandService {
 
     if (command.isEmpty) {
       return const VoiceCommand(VoiceCommandType.unknown);
+    }
+
+    const addProductCommands = {
+      'add product',
+      'add a product',
+      'create product',
+      'create a product',
+      'create new product',
+      'create a new product',
+      'new product',
+      'i want to add a product',
+      'i want to create a product',
+      'start adding a product',
+    };
+
+    if (addProductCommands.contains(command)) {
+      return const VoiceCommand(VoiceCommandType.addProduct);
     }
 
     const productListCommands = {
@@ -126,20 +139,14 @@ class VoiceCommandService {
     ]);
 
     if (unpublishName != null) {
-      return VoiceCommand(
-        VoiceCommandType.archive,
-        productName: unpublishName,
-      );
+      return VoiceCommand(VoiceCommandType.archive, productName: unpublishName);
     }
 
     for (final entry in commandPrefixes.entries) {
       final productName = extractProductName(command, entry.value);
 
       if (productName != null && productName.isNotEmpty) {
-        return VoiceCommand(
-          entry.key,
-          productName: productName,
-        );
+        return VoiceCommand(entry.key, productName: productName);
       }
     }
 
