@@ -34,6 +34,7 @@ Future<void> processVoiceCommand({
   applyProductUpdates,
   required List<dynamic> Function() getDrafts,
   required List<dynamic> Function() getArchivedProducts,
+  required void Function() openAddProduct,
 }) async {
   final voiceCommand =
       interpretedCommand ??
@@ -45,6 +46,16 @@ Future<void> processVoiceCommand({
   }
 
   voiceInputController.clear();
+
+  if (voiceCommand.type == VoiceCommandType.addProduct) {
+    openAddProduct();
+
+    updateMessage('Add Product is ready.');
+    await speechService.speak(
+      'Add Product is ready. You can enter the product details now.',
+    );
+    return;
+  }
 
   if (voiceCommand.type == VoiceCommandType.listProducts) {
     await runAction(loadDrafts);

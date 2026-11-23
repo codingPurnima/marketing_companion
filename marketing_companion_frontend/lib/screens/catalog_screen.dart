@@ -565,25 +565,26 @@ class _CatalogScreenState extends State<CatalogScreen> {
     }
   }
 
-  VoiceCommand _convertGeminiIntent(VoiceCommandResult result) {
-    final type = switch (result.intent) {
-      'list_products' => VoiceCommandType.listProducts,
-      'save_draft' => VoiceCommandType.saveDraft,
-      'load_archived_products' => VoiceCommandType.listArchived,
-      'find_product' => VoiceCommandType.find,
-      'edit_product' => VoiceCommandType.edit,
-      'republish_product' => VoiceCommandType.republish,
-      'publish_product' => VoiceCommandType.publish,
-      'archive_product' => VoiceCommandType.archive,
-      _ => VoiceCommandType.unknown,
-    };
+VoiceCommand _convertGeminiIntent(VoiceCommandResult result) {
+  final type = switch (result.intent) {
+    'add_product' => VoiceCommandType.addProduct,
+    'list_products' => VoiceCommandType.listProducts,
+    'save_draft' => VoiceCommandType.saveDraft,
+    'load_archived_products' => VoiceCommandType.listArchived,
+    'find_product' => VoiceCommandType.find,
+    'edit_product' => VoiceCommandType.edit,
+    'republish_product' => VoiceCommandType.republish,
+    'publish_product' => VoiceCommandType.publish,
+    'archive_product' => VoiceCommandType.archive,
+    _ => VoiceCommandType.unknown,
+  };
 
-    return VoiceCommand(
-      type,
-      productName: result.productQuery,
-      updates: result.updates,
-    );
-  }
+  return VoiceCommand(
+    type,
+    productName: result.productQuery,
+    updates: result.updates,
+  );
+}
 
   Future<bool> applyVoiceProductUpdates(
     Map<String, dynamic> product,
@@ -896,6 +897,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
       applyProductUpdates: applyVoiceProductUpdates,
       getDrafts: () => drafts,
       getArchivedProducts: () => archivedProducts,
+      openAddProduct: openAddProduct,
     );
   }
 
