@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/speech_service.dart';
+import '../../l10n/ui_text.dart';
 
 class SignOutDialog extends StatefulWidget {
   final SpeechService speechService;
@@ -24,16 +25,16 @@ class _SignOutDialogState extends State<SignOutDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Sign out?'),
-      content: const Text('Are you sure you want to sign out of your account?'),
+      title: Text(UiText.get(context, 'signOutConfirmTitle')),
+      content: Text(UiText.get(context, 'signOutConfirm')),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, false),
-          child: const Text('Cancel'),
+          child: Text(UiText.get(context, 'cancel')),
         ),
         FilledButton(
           onPressed: () => Navigator.pop(context, true),
-          child: const Text('Sign out'),
+          child: Text(UiText.get(context, 'signOut')),
         ),
       ],
     );
