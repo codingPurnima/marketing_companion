@@ -1,3 +1,4 @@
+
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -5,13 +6,16 @@ import 'package:http/http.dart' as http;
 import 'package:share_plus/share_plus.dart';
 
 import '../config/app_config.dart';
-
 import '../providers/locale_provider.dart';
 import '../l10n/generated/app_localizations.dart';
 
 class ProfileScreen extends StatefulWidget {
   final LocaleController localeController;
-  const ProfileScreen({super.key, required this.localeController});
+
+  const ProfileScreen({
+    super.key,
+    required this.localeController,
+  });
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -35,7 +39,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final token = supabase.auth.currentSession?.accessToken;
 
     if (token == null) {
-      throw Exception('Your session has expired. Please sign in again.');
+      throw Exception('Session expired');
     }
 
     return {
@@ -61,6 +65,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.dispose();
   }
 
+  AppLocalizations get l10n => AppLocalizations.of(context)!;
+
   Future<void> loadProfile() async {
     setState(() {
       loading = true;
@@ -73,34 +79,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
         headers: authHeaders,
       );
 
-      final data = response.body.isEmpty ? null : jsonDecode(response.body);
+      final data = response.body.isEmpty
+          ? null
+          : jsonDecode(response.body);
 
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        final detail = data is Map ? data['detail'] : null;
-        throw Exception(detail ?? 'Unable to load profile.');
+      if (response.statusCode < 200 ||
+          response.statusCode >= 300) {
+        throw Exception('Profile loading failed');
       }
 
       if (data is Map) {
-        publicNameController.text = data['public_name']?.toString() ?? '';
+        publicNameController.text =
+            data['public_name']?.toString() ?? '';
         bioController.text = data['bio']?.toString() ?? '';
         craftController.text = data['craft']?.toString() ?? '';
-        districtController.text = data['district']?.toString() ?? '';
+        districtController.text =
+            data['district']?.toString() ?? '';
         stateController.text = data['state']?.toString() ?? '';
-        whatsappController.text = data['whatsapp_number']?.toString() ?? '';
+        whatsappController.text =
+            data['whatsapp_number']?.toString() ?? '';
       }
 
       if (!mounted) return;
 
       setState(() {
         message = data == null
-            ? 'Create your public artisan profile.'
-            : 'Your profile is loaded.';
+            ? l10n.createPublicProfile
+            : l10n.profileLoaded;
       });
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
 
       setState(() {
-        message = e.toString();
+        message = l10n.profileLoadFailed;
       });
     } finally {
       if (mounted) {
@@ -131,23 +142,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
         }),
       );
 
-      final data = response.body.isEmpty ? null : jsonDecode(response.body);
-
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        final detail = data is Map ? data['detail'] : null;
-        throw Exception(detail ?? 'Unable to save profile.');
+      if (response.statusCode < 200 ||
+          response.statusCode >= 300) {
+        throw Exception('Profile saving failed');
       }
 
       if (!mounted) return;
 
       setState(() {
-        message = 'Profile saved successfully.';
+        message = l10n.profileSaved;
       });
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
 
       setState(() {
-        message = e.toString();
+        message = l10n.profileSaveFailed;
       });
     } finally {
       if (mounted) {
@@ -176,7 +185,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       validator: required
           ? (value) {
               if (value == null || value.trim().isEmpty) {
-                return '$label is required.';
+                return l10n.fieldRequired;
               }
               return null;
             }
@@ -188,17 +197,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final userId = supabase.auth.currentUser?.id;
 
     if (userId == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Please sign in again.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l10n.pleaseSignInAgain),
+        ),
+      );
       return;
     }
 
     if (publicNameController.text.trim().isEmpty ||
         craftController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Save your public profile before sharing it.'),
+        SnackBar(
+          content: Text(l10n.saveBeforeSharing),
         ),
       );
       return;
@@ -206,41 +217,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     final profileUrl = Uri.parse(
       'https://20d50b26.marketing-companion.pages.dev/',
-    ).replace(queryParameters: {'artisan': userId});
+    ).replace(
+      queryParameters: {'artisan': userId},
+    );
 
     try {
       await SharePlus.instance.share(
         ShareParams(
-          title: 'My artisan profile',
-          text:
-              'Explore my handmade products and artisan profile:\n$profileUrl',
+          title: l10n.shareProfileTitle,
+          text: '${l10n.shareProfileText}\n$profileUrl',
         ),
       );
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Unable to share profile: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l10n.shareFailed),
+        ),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My artisan profile'),
+        title: Text(l10n.profileTitle),
         actions: [
           IconButton(
             onPressed: loading ? null : shareProfile,
             icon: const Icon(Icons.share),
-            tooltip: 'Share profile',
+            tooltip: l10n.shareProfile,
           ),
         ],
       ),
       body: loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(
+              child: CircularProgressIndicator(),
+            )
           : SingleChildScrollView(
               padding: const EdgeInsets.all(16),
               child: Form(
@@ -252,16 +269,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: Padding(
                         padding: const EdgeInsets.all(16),
                         child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                          crossAxisAlignment:
+                              CrossAxisAlignment.start,
                           children: [
                             Text(
                               l10n.languageSettings,
-                              style: Theme.of(context).textTheme.titleMedium,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleMedium,
                             ),
                             const SizedBox(height: 12),
                             DropdownButtonFormField<String>(
-                              value:
-                                  widget.localeController.locale.languageCode,
+                              value: widget.localeController
+                                  .locale.languageCode,
                               decoration: InputDecoration(
                                 labelText: l10n.selectLanguage,
                                 border: const OutlineInputBorder(),
@@ -288,53 +308,67 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ),
                     ),
+
                     const SizedBox(height: 20),
+
                     Text(
-                      'Public profile details',
-                      style: Theme.of(context).textTheme.titleLarge,
+                      l10n.publicProfileDetails,
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleLarge,
                     ),
+
                     const SizedBox(height: 8),
-                    const Text(
-                      'These details help customers discover and contact you.',
-                    ),
+
+                    Text(l10n.profileDescription),
+
                     const SizedBox(height: 20),
 
                     _buildField(
-                      label: 'Public name',
+                      label: l10n.publicName,
                       controller: publicNameController,
                       required: true,
                     ),
+
                     const SizedBox(height: 16),
 
                     _buildField(
-                      label: 'Bio',
+                      label: l10n.bio,
                       controller: bioController,
                       minLines: 3,
                       maxLines: 5,
                     ),
+
                     const SizedBox(height: 16),
 
                     _buildField(
-                      label: 'Craft',
+                      label: l10n.craft,
                       controller: craftController,
                       required: true,
                     ),
+
                     const SizedBox(height: 16),
 
                     _buildField(
-                      label: 'District',
+                      label: l10n.district,
                       controller: districtController,
                     ),
-                    const SizedBox(height: 16),
 
-                    _buildField(label: 'State', controller: stateController),
                     const SizedBox(height: 16),
 
                     _buildField(
-                      label: 'WhatsApp number',
+                      label: l10n.state,
+                      controller: stateController,
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    _buildField(
+                      label: l10n.whatsappNumber,
                       controller: whatsappController,
                       keyboardType: TextInputType.phone,
                     ),
+
                     const SizedBox(height: 24),
 
                     FilledButton(
@@ -343,9 +377,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ? const SizedBox(
                               height: 20,
                               width: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                              ),
                             )
-                          : const Text('Save profile'),
+                          : Text(l10n.saveProfile),
                     ),
 
                     if (message.isNotEmpty) ...[

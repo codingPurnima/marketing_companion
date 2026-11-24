@@ -361,6 +361,138 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This archived product will be published again and visible to customers.'**
   String get republishProductDescription;
+
+  /// No description provided for @profileTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'My artisan profile'**
+  String get profileTitle;
+
+  /// No description provided for @shareProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Share profile'**
+  String get shareProfile;
+
+  /// No description provided for @publicProfileDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Public profile details'**
+  String get publicProfileDetails;
+
+  /// No description provided for @profileDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'These details help customers discover and contact you.'**
+  String get profileDescription;
+
+  /// No description provided for @publicName.
+  ///
+  /// In en, this message translates to:
+  /// **'Public name'**
+  String get publicName;
+
+  /// No description provided for @bio.
+  ///
+  /// In en, this message translates to:
+  /// **'Bio'**
+  String get bio;
+
+  /// No description provided for @craft.
+  ///
+  /// In en, this message translates to:
+  /// **'Craft'**
+  String get craft;
+
+  /// No description provided for @district.
+  ///
+  /// In en, this message translates to:
+  /// **'District'**
+  String get district;
+
+  /// No description provided for @state.
+  ///
+  /// In en, this message translates to:
+  /// **'State'**
+  String get state;
+
+  /// No description provided for @whatsappNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'WhatsApp number'**
+  String get whatsappNumber;
+
+  /// No description provided for @saveProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Save profile'**
+  String get saveProfile;
+
+  /// No description provided for @createPublicProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Create your public artisan profile.'**
+  String get createPublicProfile;
+
+  /// No description provided for @profileLoaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Your profile is loaded.'**
+  String get profileLoaded;
+
+  /// No description provided for @profileSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile saved successfully.'**
+  String get profileSaved;
+
+  /// No description provided for @profileLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to load your profile. Please try again.'**
+  String get profileLoadFailed;
+
+  /// No description provided for @profileSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to save your profile. Please try again.'**
+  String get profileSaveFailed;
+
+  /// No description provided for @fieldRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'This field is required.'**
+  String get fieldRequired;
+
+  /// No description provided for @pleaseSignInAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Please sign in again.'**
+  String get pleaseSignInAgain;
+
+  /// No description provided for @saveBeforeSharing.
+  ///
+  /// In en, this message translates to:
+  /// **'Save your public profile before sharing it.'**
+  String get saveBeforeSharing;
+
+  /// No description provided for @shareProfileTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'My profile'**
+  String get shareProfileTitle;
+
+  /// No description provided for @shareProfileText.
+  ///
+  /// In en, this message translates to:
+  /// **'Explore my handmade products and artisan profile:'**
+  String get shareProfileText;
+
+  /// No description provided for @shareFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to share your profile. Please try again.'**
+  String get shareFailed;
 }
 
 class _AppLocalizationsDelegate

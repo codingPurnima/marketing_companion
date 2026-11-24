@@ -14,11 +14,14 @@ class VoiceAssistantController extends ChangeNotifier {
 
   String speechMessage = '';
 
+  String languageCode = 'en';
+
   Future<void>? _initializationFuture;
 
-  Future<void> initialize() {
-    return _initializationFuture ??= _initialize();
-  }
+  Future<void> initialize({String language = 'en'}) {
+  languageCode = language;
+  return _initializationFuture ??= _initialize();
+}
 
   Future<void> _initialize() async {
     final available = await speechService.initializeSpeech(
@@ -44,7 +47,7 @@ class VoiceAssistantController extends ChangeNotifier {
         ? 'Voice input is ready.'
         : 'Speech recognition is unavailable on this device.';
 
-    await speechService.initializeTts();
+    await speechService.initializeTts(language: languageCode);
 
     initialized = true;
     notifyListeners();

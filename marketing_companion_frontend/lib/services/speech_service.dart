@@ -1,4 +1,3 @@
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:speech_to_text/speech_to_text.dart';
@@ -24,12 +23,16 @@ class SpeechService {
 
   Future<void> startListening({
     required Function(String) onResult,
+    String languageCode = 'en',
   }) async {
+    final localeId = languageCode == 'hi' ? 'hi_IN' : 'en_IN';
+
     await _speech.listen(
       onResult: (result) => onResult(result.recognizedWords),
       listenFor: const Duration(minutes: 1),
       pauseFor: const Duration(seconds: 5),
       partialResults: true,
+      localeId: localeId,
     );
   }
 
@@ -37,9 +40,9 @@ class SpeechService {
     await _speech.stop();
   }
 
-  Future<void> initializeTts() async {
+  Future<void> initializeTts({String language = 'en'}) async {
     try {
-      await _tts.setLanguage('en-IN');
+      await _tts.setLanguage(language == 'hi' ? 'hi-IN' : 'en-IN');
       await _tts.setSpeechRate(0.45);
       await _tts.setPitch(1.0);
       await _tts.awaitSpeakCompletion(true);
@@ -55,7 +58,8 @@ class SpeechService {
     final category = draft['category']?.toString() ?? 'other';
     final price = draft['price_inr']?.toString();
 
-    final summary = '''
+    final summary =
+        '''
 Your catalog draft is ready.
 Product title: $title.
 Category: $category.
@@ -78,10 +82,10 @@ Please review these details before saving.
   }
 
   Future<void> speak(String text) async {
-  try {
-    await _tts.speak(text);
-  } catch (e) {
-    debugPrint('TTS playback error: $e');
+    try {
+      await _tts.speak(text);
+    } catch (e) {
+      debugPrint('TTS playback error: $e');
+    }
   }
-}
 }

@@ -146,4 +146,74 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get republishProductDescription =>
       'This archived product will be published again and visible to customers.';
+
+  @override
+  String get profileTitle => 'My artisan profile';
+
+  @override
+  String get shareProfile => 'Share profile';
+
+  @override
+  String get publicProfileDetails => 'Public profile details';
+
+  @override
+  String get profileDescription =>
+      'These details help customers discover and contact you.';
+
+  @override
+  String get publicName => 'Public name';
+
+  @override
+  String get bio => 'Bio';
+
+  @override
+  String get craft => 'Craft';
+
+  @override
+  String get district => 'District';
+
+  @override
+  String get state => 'State';
+
+  @override
+  String get whatsappNumber => 'WhatsApp number';
+
+  @override
+  String get saveProfile => 'Save profile';
+
+  @override
+  String get createPublicProfile => 'Create your public artisan profile.';
+
+  @override
+  String get profileLoaded => 'Your profile is loaded.';
+
+  @override
+  String get profileSaved => 'Profile saved successfully.';
+
+  @override
+  String get profileLoadFailed =>
+      'Unable to load your profile. Please try again.';
+
+  @override
+  String get profileSaveFailed =>
+      'Unable to save your profile. Please try again.';
+
+  @override
+  String get fieldRequired => 'This field is required.';
+
+  @override
+  String get pleaseSignInAgain => 'Please sign in again.';
+
+  @override
+  String get saveBeforeSharing => 'Save your public profile before sharing it.';
+
+  @override
+  String get shareProfileTitle => 'My profile';
+
+  @override
+  String get shareProfileText =>
+      'Explore my handmade products and artisan profile:';
+
+  @override
+  String get shareFailed => 'Unable to share your profile. Please try again.';
 }

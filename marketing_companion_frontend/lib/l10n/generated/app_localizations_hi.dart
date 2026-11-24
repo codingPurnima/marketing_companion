@@ -147,4 +147,75 @@ class AppLocalizationsHi extends AppLocalizations {
   @override
   String get republishProductDescription =>
       'यह आर्काइव किया गया उत्पाद फिर से ग्राहकों को दिखाई देगा।';
+
+  @override
+  String get profileTitle => 'मेरी कारीगर प्रोफ़ाइल';
+
+  @override
+  String get shareProfile => 'प्रोफ़ाइल शेयर करें';
+
+  @override
+  String get publicProfileDetails => 'सार्वजनिक प्रोफ़ाइल की जानकारी';
+
+  @override
+  String get profileDescription =>
+      'इस जानकारी से ग्राहक आपको खोज और संपर्क कर सकते हैं।';
+
+  @override
+  String get publicName => 'सार्वजनिक नाम';
+
+  @override
+  String get bio => 'परिचय';
+
+  @override
+  String get craft => 'कारीगरी';
+
+  @override
+  String get district => 'ज़िला';
+
+  @override
+  String get state => 'राज्य';
+
+  @override
+  String get whatsappNumber => 'व्हाट्सऐप नंबर';
+
+  @override
+  String get saveProfile => 'प्रोफ़ाइल सेव करें';
+
+  @override
+  String get createPublicProfile => 'अपनी सार्वजनिक कारीगर प्रोफ़ाइल बनाएँ।';
+
+  @override
+  String get profileLoaded => 'आपकी प्रोफ़ाइल लोड हो गई है।';
+
+  @override
+  String get profileSaved => 'प्रोफ़ाइल सफलतापूर्वक सेव हो गई।';
+
+  @override
+  String get profileLoadFailed =>
+      'प्रोफ़ाइल लोड नहीं हो सकी। कृपया फिर कोशिश करें।';
+
+  @override
+  String get profileSaveFailed =>
+      'प्रोफ़ाइल सेव नहीं हो सकी। कृपया फिर कोशिश करें।';
+
+  @override
+  String get fieldRequired => 'यह जानकारी देना आवश्यक है।';
+
+  @override
+  String get pleaseSignInAgain => 'कृपया फिर से लॉग इन करें।';
+
+  @override
+  String get saveBeforeSharing =>
+      'शेयर करने से पहले अपनी सार्वजनिक प्रोफ़ाइल सेव करें।';
+
+  @override
+  String get shareProfileTitle => 'मेरी प्रोफ़ाइल';
+
+  @override
+  String get shareProfileText =>
+      'मेरे हस्तनिर्मित उत्पाद और कारीगर प्रोफ़ाइल देखें:';
+
+  @override
+  String get shareFailed => 'प्रोफ़ाइल शेयर नहीं हो सकी। कृपया फिर कोशिश करें।';
 }

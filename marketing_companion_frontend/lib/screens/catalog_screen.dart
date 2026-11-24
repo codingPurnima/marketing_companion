@@ -23,6 +23,7 @@ import '../widgets/catalog/voice_assistant_section.dart';
 import '../models/voice_command_result.dart';
 import '../services/voice_understanding_service.dart';
 import '../providers/locale_provider.dart';
+import '../../l10n/ui_text.dart';
 
 import 'home_screen.dart';
 
@@ -32,7 +33,11 @@ class CatalogScreen extends StatefulWidget {
   final VoiceAssistantController voiceAssistantController;
   final LocaleController localeController;
 
-  const CatalogScreen({super.key, required this.voiceAssistantController, required this.localeController});
+  const CatalogScreen({
+    super.key,
+    required this.voiceAssistantController,
+    required this.localeController,
+  });
 
   @override
   State<CatalogScreen> createState() => _CatalogScreenState();
@@ -132,7 +137,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
       selectedImage = null;
       selectedImageBytes = null;
 
-      message = 'Editing product. Update the details and save.';
+      message = UiText.get(context, 'editingMessage');
     });
   }
 
@@ -742,7 +747,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
         if (!mounted) return;
         setState(() => message = messageText);
       },
-      messageText: 'Editing product. Update the details and save.',
+      messageText: UiText.get(context, 'editingMessage'),
     );
   }
 
@@ -800,7 +805,9 @@ class _CatalogScreenState extends State<CatalogScreen> {
     try {
       interpretation = await voiceUnderstandingService.understandCommand(
         transcript: transcript,
-        languageHint: 'auto',
+        languageHint: widget.localeController.locale.languageCode == 'hi'
+            ? 'hi-IN'
+            : 'en-IN',
         contextProductTitle: getVoiceContextProductTitle(),
       );
     } catch (e) {
@@ -818,7 +825,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
     if (interpretation.needsClarification) {
       final question =
           interpretation.clarificationQuestion ??
-          'Could you please clarify your command?';
+          UiText.get(context, 'clarifyCommand');
 
       _showFeedback(question);
 
@@ -850,7 +857,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
     if (requiresProduct.contains(voiceCommand.type) &&
         (voiceCommand.productName == null ||
             voiceCommand.productName!.trim().isEmpty)) {
-      const response = 'Which product are you referring to?';
+      final response = UiText.get(context, 'whichProduct');
 
       _showFeedback(response);
 
@@ -961,8 +968,8 @@ class _CatalogScreenState extends State<CatalogScreen> {
 
       _showFeedback(
         selection == 'enhanced'
-            ? 'Enhanced image selected.'
-            : 'Original image selected.',
+            ? UiText.get(context, 'enhancedSelected')
+            : UiText.get(context, 'ori'),
       );
     });
   }
@@ -1003,7 +1010,10 @@ class _CatalogScreenState extends State<CatalogScreen> {
         onProfile: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => ProfileScreen(localeController: widget.localeController)),
+            MaterialPageRoute(
+              builder: (_) =>
+                  ProfileScreen(localeController: widget.localeController),
+            ),
           );
         },
         onSignOut: _handleSignOut,
@@ -1023,11 +1033,15 @@ class _CatalogScreenState extends State<CatalogScreen> {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          tooltip: 'Back to products',
+          tooltip: UiText.get(context, 'backProducts'),
           icon: const Icon(Icons.arrow_back),
           onPressed: returnHome,
         ),
-        title: Text(editingProductId == null ? 'Add Product' : 'Edit Product'),
+        title: Text(
+          editingProductId == null
+              ? UiText.get(context, 'addProduct')
+              : UiText.get(context, 'editProductScreen'),
+        ),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -1098,7 +1112,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
                 selectedImage = null;
                 selectedImageBytes = null;
 
-                message = 'Product editing cancelled.';
+                message = UiText.get(context, 'cancelledEditing');
                 currentView = CatalogView.home;
               });
             },
