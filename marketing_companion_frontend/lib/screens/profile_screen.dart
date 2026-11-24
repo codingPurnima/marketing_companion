@@ -6,8 +6,12 @@ import 'package:share_plus/share_plus.dart';
 
 import '../config/app_config.dart';
 
+import '../providers/locale_provider.dart';
+import '../l10n/generated/app_localizations.dart';
+
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  final LocaleController localeController;
+  const ProfileScreen({super.key, required this.localeController});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -223,6 +227,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
         title: const Text('My artisan profile'),
@@ -243,6 +248,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              l10n.languageSettings,
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            const SizedBox(height: 12),
+                            DropdownButtonFormField<String>(
+                              value:
+                                  widget.localeController.locale.languageCode,
+                              decoration: InputDecoration(
+                                labelText: l10n.selectLanguage,
+                                border: const OutlineInputBorder(),
+                              ),
+                              items: [
+                                DropdownMenuItem(
+                                  value: 'en',
+                                  child: Text(l10n.english),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'hi',
+                                  child: Text(l10n.hindi),
+                                ),
+                              ],
+                              onChanged: (value) {
+                                if (value == null) return;
+
+                                widget.localeController.setLocale(
+                                  Locale(value),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
                     Text(
                       'Public profile details',
                       style: Theme.of(context).textTheme.titleLarge,
