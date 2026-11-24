@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/app_config.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -26,6 +27,8 @@ class _LoginScreenState extends State<LoginScreen> {
       message = '';
     });
 
+    final l10n = AppLocalizations.of(context)!;
+
     try {
       final email = emailController.text.trim();
       final password = passwordController.text;
@@ -37,7 +40,7 @@ class _LoginScreenState extends State<LoginScreen> {
         );
 
         if (response.session == null) {
-          message = 'Account created. Check your email to confirm it.';
+          message = l10n.accountCreatedCheckEmail;
         }
       } else {
         await supabase.auth.signInWithPassword(
@@ -46,7 +49,9 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       }
     } catch (e) {
-      message = e is AuthException ? e.message : 'Authentication failed.';
+      message = e is AuthException
+          ? e.message
+          : l10n.authenticationFailed;
     } finally {
       if (mounted) {
         setState(() => loading = false);
@@ -63,29 +68,38 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Artisan Catalog')),
+      appBar: AppBar(
+        title: Text(l10n.appTitle),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
           Text(
-            isSignUp ? 'Create account' : 'Sign in',
+            isSignUp ? l10n.createAccount : l10n.signIn,
             style: Theme.of(context).textTheme.headlineMedium,
           ),
           const SizedBox(height: 20),
           TextField(
             controller: emailController,
             keyboardType: TextInputType.emailAddress,
-            decoration: const InputDecoration(labelText: 'Email'),
+            decoration: InputDecoration(
+              labelText: l10n.email,
+            ),
           ),
+          const SizedBox(height: 10),
           TextField(
             controller: passwordController,
             obscureText: obscurePassword,
             decoration: InputDecoration(
-              labelText: 'Password',
+              labelText: l10n.password,
               suffixIcon: IconButton(
                 icon: Icon(
-                  obscurePassword ? Icons.visibility_off : Icons.visibility,
+                  obscurePassword
+                      ? Icons.visibility_off
+                      : Icons.visibility,
                 ),
                 onPressed: () {
                   setState(() {
@@ -100,24 +114,27 @@ class _LoginScreenState extends State<LoginScreen> {
             onPressed: loading ? null : authenticate,
             child: Text(
               loading
-                  ? 'Please wait...'
+                  ? l10n.pleaseWait
                   : isSignUp
-                  ? 'Create account'
-                  : 'Sign in',
+                      ? l10n.createAccount
+                      : l10n.signIn,
             ),
           ),
           TextButton(
-            onPressed: () => setState(() {
-              isSignUp = !isSignUp;
-              message = '';
-            }),
+            onPressed: () {
+              setState(() {
+                isSignUp = !isSignUp;
+                message = '';
+              });
+            },
             child: Text(
               isSignUp
-                  ? 'Already registered? Sign in'
-                  : 'New artisan? Create an account',
+                  ? l10n.alreadyRegistered
+                  : l10n.newArtisanCreateAccount,
             ),
           ),
-          if (message.isNotEmpty) SelectableText(message),
+          if (message.isNotEmpty)
+            SelectableText(message),
         ],
       ),
     );

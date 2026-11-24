@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../widgets/catalog/voice_assistant_section.dart';
 import '../widgets/catalog/product_tile.dart';
+import '../l10n/generated/app_localizations.dart';
 
 class HomeScreen extends StatelessWidget {
   final List<dynamic> products;
@@ -70,6 +71,7 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final publishedProducts = products.where((item) {
       return item is Map && item['status']?.toString() == 'published';
     }).toList();
@@ -79,15 +81,15 @@ class HomeScreen extends StatelessWidget {
     }).toList();
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Products'),
+        title: Text(l10n.myProducts),
         actions: [
           IconButton(
-            tooltip: 'My profile',
+            tooltip: l10n.myProfile,
             onPressed: loading ? null : onProfile,
             icon: const Icon(Icons.person_outline),
           ),
           IconButton(
-            tooltip: 'Sign out',
+            tooltip: l10n.signOut,
             onPressed: onSignOut,
             icon: const Icon(Icons.logout),
           ),
@@ -96,7 +98,7 @@ class HomeScreen extends StatelessWidget {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: loading ? null : onAddProduct,
         icon: const Icon(Icons.add),
-        label: const Text('Add Product'),
+        label: Text(l10n.addProduct),
       ),
       body: RefreshIndicator(
         onRefresh: onRefresh,
@@ -111,12 +113,14 @@ class HomeScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Your catalog',
+                      l10n.yourCatalog,
                       style: Theme.of(context).textTheme.headlineSmall,
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${products.length} ${products.length == 1 ? 'product' : 'products'}',
+                      products.length == 1
+                          ? l10n.productCountOne
+                          : l10n.productCount(products.length),
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                     if (message.isNotEmpty) ...[
@@ -146,7 +150,7 @@ class HomeScreen extends StatelessWidget {
                       const CircularProgressIndicator(),
                       const SizedBox(height: 16),
                       Text(
-                        'Fetching products...',
+                        l10n.fetchingProducts,
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                     ],
@@ -164,8 +168,8 @@ class HomeScreen extends StatelessWidget {
                       children: [
                         const Icon(Icons.cloud_off_outlined, size: 48),
                         const SizedBox(height: 12),
-                        const Text(
-                          'Could not fetch your products.',
+                        Text(
+                          l10n.couldNotFetchProducts,
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 8),
@@ -178,7 +182,7 @@ class HomeScreen extends StatelessWidget {
                         FilledButton.icon(
                           onPressed: onRetry,
                           icon: const Icon(Icons.refresh),
-                          label: const Text('Try again'),
+                          label: Text(l10n.tryAgain),
                         ),
                       ],
                     ),
@@ -198,12 +202,12 @@ class HomeScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        'No active products yet',
+                        l10n.noActiveProducts,
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
                       const SizedBox(height: 8),
-                      const Text(
-                        'Add your first product to start building your catalog.',
+                      Text(
+                        l10n.addFirstProductMessage,
                         textAlign: TextAlign.center,
                       ),
                     ],
@@ -213,15 +217,15 @@ class HomeScreen extends StatelessWidget {
             else ...[
               ..._buildProductSection(
                 context,
-                title: 'Published products',
+                title: l10n.publishedProducts,
                 sectionProducts: publishedProducts,
-                emptyMessage: 'No published products yet.',
+                emptyMessage: l10n.noPublishedProducts,
               ),
               ..._buildProductSection(
                 context,
-                title: 'Drafts',
+                title: l10n.drafts,
                 sectionProducts: draftProducts,
-                emptyMessage: 'No drafts yet.',
+                emptyMessage: l10n.noDrafts,
               ),
             ],
             SliverPadding(
@@ -231,7 +235,7 @@ class HomeScreen extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        'Archived products',
+                        l10n.archivedProducts,
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
                     ),
@@ -248,7 +252,7 @@ class HomeScreen extends StatelessWidget {
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                   child: Text(
-                    'No archived products.',
+                    l10n.noArchivedProducts,
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                 ),
@@ -263,8 +267,8 @@ class HomeScreen extends StatelessWidget {
                     );
 
                     final title =
-                        product['title']?.toString() ?? 'Untitled product';
-                    final category = product['category']?.toString() ?? 'Other';
+                        product['title']?.toString() ?? l10n.untitledProduct;
+                    final category = product['category']?.toString() ?? l10n.otherCategory;
                     final price = product['price'] ?? product['price_inr'];
                     final productId = product['id']?.toString();
 
@@ -288,7 +292,7 @@ class HomeScreen extends StatelessWidget {
                             ? null
                             : imageUrls[productId],
                         onTap: null,
-                        actionLabel: 'Republish',
+                        actionLabel: l10n.republish,
 
                         onAction: loading || productId == null
                             ? null
@@ -325,39 +329,45 @@ class HomeScreen extends StatelessWidget {
   ) async {
     if (loading) return;
 
+    final l10n = AppLocalizations.of(context)!;
+
+    // ignore: unused_local_variable
     String action;
     String buttonLabel;
+    String dialogTitle;
+    String dialogDescription;
 
     switch (status) {
       case 'published':
         action = 'archive';
-        buttonLabel = 'Archive';
+        buttonLabel = l10n.archive;
+        dialogTitle = l10n.archiveProductConfirmation;
+        dialogDescription = l10n.archiveProductDescription;
         break;
+
       case 'archived':
         action = 'republish';
-        buttonLabel = 'Republish';
+        buttonLabel = l10n.republish;
+        dialogTitle = l10n.republishProductConfirmation;
+        dialogDescription = l10n.republishProductDescription;
         break;
+
       default:
         action = 'publish';
-        buttonLabel = 'Publish';
+        buttonLabel = l10n.publish;
+        dialogTitle = l10n.publishProductConfirmation;
+        dialogDescription = l10n.publishProductDescription;
     }
 
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: Text('$action this product?'),
-        content: Text(switch (action) {
-          'publish' =>
-            'This product will become visible to customers in your catalog.',
-          'archive' =>
-            'This product will be removed from your published catalog.',
-          _ =>
-            'This archived product will be published again and visible to customers.',
-        }),
+        title: Text(dialogTitle),
+        content: Text(dialogDescription),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
+            child: Text(l10n.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext, true),
@@ -382,6 +392,7 @@ class HomeScreen extends StatelessWidget {
     required List<dynamic> sectionProducts,
     required String emptyMessage,
   }) {
+    final l10n = AppLocalizations.of(context)!;
     return [
       SliverPadding(
         padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
@@ -426,9 +437,9 @@ class HomeScreen extends StatelessWidget {
                 final productId = product['id']?.toString();
 
                 final productTitle =
-                    product['title']?.toString() ?? 'Untitled product';
+                    product['title']?.toString() ?? l10n.untitledProduct;
 
-                final category = product['category']?.toString() ?? 'Other';
+                final category = product['category']?.toString() ?? l10n.otherCategory;
 
                 final status = product['status']?.toString() ?? 'draft';
 
@@ -459,7 +470,7 @@ class HomeScreen extends StatelessWidget {
                     imageUrl: imageUrl,
                     highlighted: isVoiceMatched,
                     onTap: loading ? null : () => onProductTap(product),
-                    actionLabel: status == 'published' ? 'Archive' : 'Publish',
+                    actionLabel: status == 'published' ? l10n.archive : l10n.publish,
 
                     onAction: loading || productId == null
                         ? null

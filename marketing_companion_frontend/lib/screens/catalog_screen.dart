@@ -22,6 +22,7 @@ import '../controllers/voice_assistant_controller.dart';
 import '../widgets/catalog/voice_assistant_section.dart';
 import '../models/voice_command_result.dart';
 import '../services/voice_understanding_service.dart';
+import '../providers/locale_provider.dart';
 
 import 'home_screen.dart';
 
@@ -29,8 +30,9 @@ enum CatalogView { home, editor }
 
 class CatalogScreen extends StatefulWidget {
   final VoiceAssistantController voiceAssistantController;
+  final LocaleController localeController;
 
-  const CatalogScreen({super.key, required this.voiceAssistantController});
+  const CatalogScreen({super.key, required this.voiceAssistantController, required this.localeController});
 
   @override
   State<CatalogScreen> createState() => _CatalogScreenState();
@@ -565,26 +567,26 @@ class _CatalogScreenState extends State<CatalogScreen> {
     }
   }
 
-VoiceCommand _convertGeminiIntent(VoiceCommandResult result) {
-  final type = switch (result.intent) {
-    'add_product' => VoiceCommandType.addProduct,
-    'list_products' => VoiceCommandType.listProducts,
-    'save_draft' => VoiceCommandType.saveDraft,
-    'load_archived_products' => VoiceCommandType.listArchived,
-    'find_product' => VoiceCommandType.find,
-    'edit_product' => VoiceCommandType.edit,
-    'republish_product' => VoiceCommandType.republish,
-    'publish_product' => VoiceCommandType.publish,
-    'archive_product' => VoiceCommandType.archive,
-    _ => VoiceCommandType.unknown,
-  };
+  VoiceCommand _convertGeminiIntent(VoiceCommandResult result) {
+    final type = switch (result.intent) {
+      'add_product' => VoiceCommandType.addProduct,
+      'list_products' => VoiceCommandType.listProducts,
+      'save_draft' => VoiceCommandType.saveDraft,
+      'load_archived_products' => VoiceCommandType.listArchived,
+      'find_product' => VoiceCommandType.find,
+      'edit_product' => VoiceCommandType.edit,
+      'republish_product' => VoiceCommandType.republish,
+      'publish_product' => VoiceCommandType.publish,
+      'archive_product' => VoiceCommandType.archive,
+      _ => VoiceCommandType.unknown,
+    };
 
-  return VoiceCommand(
-    type,
-    productName: result.productQuery,
-    updates: result.updates,
-  );
-}
+    return VoiceCommand(
+      type,
+      productName: result.productQuery,
+      updates: result.updates,
+    );
+  }
 
   Future<bool> applyVoiceProductUpdates(
     Map<String, dynamic> product,
@@ -935,38 +937,35 @@ VoiceCommand _convertGeminiIntent(VoiceCommandResult result) {
   }
 
   Future<void> selectEditorImage(String selection) async {
-  final productId = editingProductId;
+    final productId = editingProductId;
 
-  if (productId == null) return;
+    if (productId == null) return;
 
-  final imageId = draftImageIds[productId];
+    final imageId = draftImageIds[productId];
 
-  if (imageId == null) {
-    _showFeedback('Could not find the product image record.');
-    return;
+    if (imageId == null) {
+      _showFeedback('Could not find the product image record.');
+      return;
+    }
+
+    if (selection == 'enhanced' &&
+        draftImageComparisons[productId]?['enhanced_url'] == null) {
+      _showFeedback('Enhance the image before selecting this version.');
+      return;
+    }
+
+    await runAction(() async {
+      await imageService.selectImage(imageId: imageId, selection: selection);
+
+      await loadDrafts();
+
+      _showFeedback(
+        selection == 'enhanced'
+            ? 'Enhanced image selected.'
+            : 'Original image selected.',
+      );
+    });
   }
-
-  if (selection == 'enhanced' &&
-      draftImageComparisons[productId]?['enhanced_url'] == null) {
-    _showFeedback('Enhance the image before selecting this version.');
-    return;
-  }
-
-  await runAction(() async {
-    await imageService.selectImage(
-      imageId: imageId,
-      selection: selection,
-    );
-
-    await loadDrafts();
-
-    _showFeedback(
-      selection == 'enhanced'
-          ? 'Enhanced image selected.'
-          : 'Original image selected.',
-    );
-  });
-}
 
   @override
   void dispose() {
@@ -1004,7 +1003,7 @@ VoiceCommand _convertGeminiIntent(VoiceCommandResult result) {
         onProfile: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const ProfileScreen()),
+            MaterialPageRoute(builder: (_) => ProfileScreen(localeController: widget.localeController)),
           );
         },
         onSignOut: _handleSignOut,
