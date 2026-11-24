@@ -1,5 +1,5 @@
-
 import 'package:flutter/material.dart';
+import '../../l10n/ui_text.dart';
 
 class ArchivedProductsSection extends StatelessWidget {
   final List<dynamic> products;
@@ -18,16 +18,13 @@ class ArchivedProductsSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Archived',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
+        Text(
+          UiText.get(context, 'archived'),
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
         if (products.isEmpty)
-          const Text('No archived products yet.')
+          Text(UiText.get(context, 'noArchived'))
         else
           ...products.map((product) {
             final item = Map<String, dynamic>.from(product as Map);
@@ -37,14 +34,13 @@ class ArchivedProductsSection extends StatelessWidget {
               child: ListTile(
                 title: Text(item['title']?.toString() ?? ''),
                 subtitle: Text(
-                  '${item['category'] ?? 'other'} '
-                  '• ₹${item['price'] ?? 0}',
+                  UiText.category(context, item['category']?.toString() ?? 'other')
                 ),
                 trailing: ElevatedButton(
                   onPressed: loading || productId == null
                       ? null
                       : () => onRepublish(productId),
-                  child: const Text('Republish'),
+                  child: Text(UiText.get(context, 'republish')),
                 ),
               ),
             );

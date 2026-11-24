@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/speech_service.dart';
+import '../../l10n/ui_text.dart';
 
 class VoiceCommandConfirmationDialog extends StatefulWidget {
   final String title;
@@ -52,18 +53,24 @@ class _VoiceCommandConfirmationDialogState
     return AlertDialog(
       title: Text(widget.title),
       content: Text(
-        widget.publish
+        UiText.isHindi(context)
+            ? widget.publish
+                  ? 'क्या आप इस उत्पाद को प्रकाशित करना चाहते हैं?'
+                  : 'क्या आप इस उत्पाद को आर्काइव करना चाहते हैं?'
+            : widget.publish
             ? 'Are you sure you want to publish this product?'
             : 'Are you sure you want to archive this product?',
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, false),
-          child: const Text('Cancel'),
+          child: Text(UiText.get(context, 'cancel')),
         ),
         ElevatedButton(
           onPressed: () => Navigator.pop(context, true),
-          child: Text(widget.publish ? 'Publish' : 'Archive'),
+          child: Text(
+            UiText.get(context, widget.publish ? 'publish' : 'archive'),
+          ),
         ),
       ],
     );

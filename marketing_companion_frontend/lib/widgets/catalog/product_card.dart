@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../l10n/ui_text.dart';
 
 class ProductCard extends StatelessWidget {
   final Map<String, dynamic> product;
@@ -68,52 +69,55 @@ class ProductCard extends StatelessWidget {
                   height: 180,
                   width: double.infinity,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => const SizedBox(
+                  errorBuilder: (_, __, ___) => SizedBox(
                     height: 80,
-                    child: Center(child: Text('Image preview unavailable')),
+                    child: Center(
+                      child: Text(UiText.get(context, 'imageUnavailable')),
+                    ),
                   ),
                 ),
               ),
             const SizedBox(height: 8),
             Text(
-              product['title']?.toString() ?? 'Untitled',
+              product['title']?.toString() ?? UiText.get(context, 'untitled'),
               style: Theme.of(context).textTheme.titleMedium,
             ),
             Text(
-              '${product['category']} · '
-              '₹${product['price'] ?? 'Not set'} · $status',
+              '${UiText.category(context, product['category']?.toString() ?? 'other')} · '
+              '₹${product['price'] ?? 'Not set'} · '
+              '${UiText.status(context, status ?? 'draft')}',
             ),
             if (productId != null) ...[
               const SizedBox(height: 8),
               OutlinedButton.icon(
                 onPressed: loading || !canEdit ? null : onEdit,
                 icon: const Icon(Icons.edit_outlined),
-                label: const Text('Edit product'),
+                label: Text(UiText.get(context, 'editProduct')),
               ),
               if (status == 'draft')
                 FilledButton.tonalIcon(
                   onPressed: loading ? null : onPublish,
                   icon: const Icon(Icons.publish),
-                  label: const Text('Publish product'),
+                  label: Text(UiText.get(context, 'publishProduct')),
                 )
               else if (status == 'published')
                 OutlinedButton.icon(
                   onPressed: loading ? null : onUnpublish,
                   icon: const Icon(Icons.unpublished_outlined),
-                  label: const Text('Unpublish product'),
+                  label: Text(UiText.get(context, 'unpublishProduct')),
                 ),
               if (status == 'published')
                 OutlinedButton.icon(
                   onPressed: loading ? null : onShare,
                   icon: const Icon(Icons.share_outlined),
-                  label: const Text('Share product'),
+                  label: Text(UiText.get(context, 'shareProduct')),
                 ),
             ],
-            if (imageUrl == null) const Text('No image attached'),
+            if (imageUrl == null) Text(UiText.get(context, 'noImage')),
             if (enhancedUrl != null && selectedImage != 'enhanced') ...[
               const SizedBox(height: 12),
-              const Text(
-                'Enhanced image preview',
+              Text(
+                UiText.get(context, 'enhancedPreview'),
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 6),
@@ -128,19 +132,17 @@ class ProductCard extends StatelessWidget {
               ),
             ],
             if (enhancementStatus == 'processing')
-              const Text('Image enhancement is processing.'),
+              Text(UiText.get(context, 'enhancing')),
             if (enhancementStatus == 'failed')
-              const Text('Image enhancement failed. You can try again.'),
+              Text(UiText.get(context, 'enhanceFailed')),
             if (enhancementStatus == 'completed' && enhancedUrl == null)
-              const Text(
-                'Enhanced image is ready, but its preview could not be loaded.',
-              ),
+              Text(UiText.get(context, 'enhancedPreviewFailed')),
             if (enhancedUrl != null &&
                 productId != null &&
                 (comparison?['selected_image']?.toString() != 'enhanced')) ...[
               const SizedBox(height: 8),
-              const Text(
-                'Choose the image for your catalogue:',
+              Text(
+                UiText.get(context, 'chooseImage'),
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               Row(
@@ -150,7 +152,7 @@ class ProductCard extends StatelessWidget {
                       onPressed: loading
                           ? null
                           : () => onSelectImage('original'),
-                      child: const Text('Use original'),
+                      child: Text(UiText.get(context, 'original')),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -159,7 +161,7 @@ class ProductCard extends StatelessWidget {
                       onPressed: loading
                           ? null
                           : () => onSelectImage('enhanced'),
-                      child: const Text('Use enhanced'),
+                      child: Text(UiText.get(context, 'enhanced')),
                     ),
                   ),
                 ],
@@ -172,7 +174,7 @@ class ProductCard extends StatelessWidget {
                     ? null
                     : onRequestEnhancement,
                 icon: const Icon(Icons.auto_awesome),
-                label: const Text('Test image enhancement'),
+                label: Text(UiText.get(context, 'testEnhancement')),
               ),
             ],
           ],

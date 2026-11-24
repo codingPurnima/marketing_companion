@@ -1,6 +1,6 @@
-
 import 'package:flutter/material.dart';
 import 'product_card.dart';
+import '../../l10n/ui_text.dart';
 
 class ProductListSection extends StatelessWidget {
   final List<dynamic> products;
@@ -43,15 +43,15 @@ class ProductListSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '3. Your products',
+          UiText.isHindi(context) ? 'आपके उत्पाद' : 'Your products',
           style: Theme.of(context).textTheme.titleLarge,
         ),
         OutlinedButton(
           onPressed: loading ? null : onLoadProducts,
-          child: const Text('Load drafts'),
+          child: Text(UiText.get(context, 'loadDrafts')),
         ),
         if (products.isEmpty)
-          const Text('No products loaded yet.')
+          Text(UiText.get(context, 'noProductsLoaded'))
         else
           ...products.map((item) {
             final product = Map<String, dynamic>.from(item as Map);
@@ -64,18 +64,16 @@ class ProductListSection extends StatelessWidget {
             return ProductCard(
               key: ValueKey(productId ?? product['title']),
               product: product,
-              imageUrl: productId == null
-                  ? null
-                  : imageUrls[productId],
+              imageUrl: productId == null ? null : imageUrls[productId],
               enhancedUrl: comparison?['enhanced_url']?.toString(),
               enhancementStatus:
                   comparison?['enhancement_status']?.toString() ??
-                      'not_requested',
+                  'not_requested',
               imageStoragePath: productId == null
                   ? null
                   : imagePaths[productId],
-              isVoiceMatched: productId != null &&
-                  productId == voiceMatchedProductId,
+              isVoiceMatched:
+                  productId != null && productId == voiceMatchedProductId,
               loading: loading,
               canEdit: canEdit,
               onEdit: () => onEdit(product),
@@ -87,9 +85,7 @@ class ProductListSection extends StatelessWidget {
               },
               onShare: () => onShare(product),
               onRequestEnhancement: () {
-                final path = productId == null
-                    ? null
-                    : imagePaths[productId];
+                final path = productId == null ? null : imagePaths[productId];
                 if (path != null) onRequestEnhancement(path);
               },
               onSelectImage: (selection) {

@@ -1,7 +1,7 @@
-
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import '../../l10n/ui_text.dart';
 
 class ProductEditorSection extends StatefulWidget {
   final TextEditingController titleController;
@@ -52,13 +52,13 @@ class ProductEditorSection extends StatefulWidget {
   });
 
   @override
-  State<ProductEditorSection> createState() =>
-      _ProductEditorSectionState();
+  State<ProductEditorSection> createState() => _ProductEditorSectionState();
 }
 
 class _ProductEditorSectionState extends State<ProductEditorSection> {
   @override
   Widget build(BuildContext context) {
+    final t = (String key) => UiText.get(context, key);
     final isEditing = widget.editingProductId != null;
     final hasUploadedImage = widget.originalImageUrl != null;
     final hasEnhancedImage = widget.enhancedImageUrl != null;
@@ -67,7 +67,7 @@ class _ProductEditorSectionState extends State<ProductEditorSection> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          isEditing ? 'View and Edit product' : 'Review and edit draft',
+          isEditing ? t('viewEdit') : t('reviewDraft'),
           style: Theme.of(context).textTheme.titleLarge,
         ),
 
@@ -75,9 +75,7 @@ class _ProductEditorSectionState extends State<ProductEditorSection> {
 
         TextField(
           controller: widget.titleController,
-          decoration: const InputDecoration(
-            labelText: 'Product title',
-          ),
+          decoration: InputDecoration(labelText: t('productTitle')),
         ),
 
         const SizedBox(height: 12),
@@ -86,9 +84,7 @@ class _ProductEditorSectionState extends State<ProductEditorSection> {
           controller: widget.descriptionController,
           minLines: 2,
           maxLines: 5,
-          decoration: const InputDecoration(
-            labelText: 'Description',
-          ),
+          decoration: InputDecoration(labelText: t('description')),
         ),
 
         const SizedBox(height: 12),
@@ -97,18 +93,16 @@ class _ProductEditorSectionState extends State<ProductEditorSection> {
           initialValue: widget.categoryController.text.isNotEmpty
               ? widget.categoryController.text
               : 'other',
-          decoration: const InputDecoration(
-            labelText: 'Product Category',
-          ),
-          items: const [
-            DropdownMenuItem(value: 'pottery', child: Text('Pottery')),
-            DropdownMenuItem(value: 'textiles', child: Text('Textiles')),
-            DropdownMenuItem(value: 'weaving', child: Text('Weaving')),
-            DropdownMenuItem(value: 'woodwork', child: Text('Woodwork')),
-            DropdownMenuItem(value: 'metalwork', child: Text('Metalwork')),
-            DropdownMenuItem(value: 'jewelry', child: Text('Jewelry')),
-            DropdownMenuItem(value: 'paintings', child: Text('Paintings')),
-            DropdownMenuItem(value: 'other', child: Text('Other')),
+          decoration: InputDecoration(labelText: t('category')),
+          items: [
+            DropdownMenuItem(value: 'pottery', child: Text(t('pottery'))),
+            DropdownMenuItem(value: 'textiles', child: Text(t('textiles'))),
+            DropdownMenuItem(value: 'weaving', child: Text(t('weaving'))),
+            DropdownMenuItem(value: 'woodwork', child: Text(t('woodwork'))),
+            DropdownMenuItem(value: 'metalwork', child: Text(t('metalwork'))),
+            DropdownMenuItem(value: 'jewelry', child: Text(t('jewelry'))),
+            DropdownMenuItem(value: 'paintings', child: Text(t('paintings'))),
+            DropdownMenuItem(value: 'other', child: Text(t('other'))),
           ],
           onChanged: widget.loading
               ? null
@@ -125,19 +119,13 @@ class _ProductEditorSectionState extends State<ProductEditorSection> {
 
         TextField(
           controller: widget.priceController,
-          keyboardType:
-              const TextInputType.numberWithOptions(decimal: true),
-          decoration: const InputDecoration(
-            labelText: 'Price in INR (optional)',
-          ),
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: InputDecoration(labelText: t('priceOptional')),
         ),
 
         const SizedBox(height: 20),
 
-        Text(
-          'Product images',
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
+        Text(t('images'), style: Theme.of(context).textTheme.titleMedium),
 
         const SizedBox(height: 8),
 
@@ -146,8 +134,8 @@ class _ProductEditorSectionState extends State<ProductEditorSection> {
           icon: const Icon(Icons.add_photo_alternate_outlined),
           label: Text(
             widget.selectedImageBytes == null
-                ? 'Choose product image'
-                : 'Change product image',
+                ? t('chooseImage')
+                : t('changeImage'),
           ),
         ),
 
@@ -165,21 +153,15 @@ class _ProductEditorSectionState extends State<ProductEditorSection> {
           TextButton.icon(
             onPressed: widget.loading ? null : widget.onRemoveImage,
             icon: const Icon(Icons.delete_outline),
-            label: const Text('Remove selected image'),
+            label: Text(t('removeImage')),
           ),
-          const Text(
-            'This image will be uploaded when you enhance it or save the draft.',
-            style: TextStyle(fontSize: 12),
-          ),
+          Text(t('uploadLater'), style: TextStyle(fontSize: 12)),
         ],
 
         if (widget.selectedImageBytes == null && hasUploadedImage) ...[
           const SizedBox(height: 16),
 
-          Text(
-            'Image comparison',
-            style: Theme.of(context).textTheme.titleSmall,
-          ),
+          Text(t('comparison'), style: Theme.of(context).textTheme.titleSmall),
 
           const SizedBox(height: 10),
 
@@ -190,8 +172,7 @@ class _ProductEditorSectionState extends State<ProductEditorSection> {
                 child: _buildImageOption(
                   label: 'Original',
                   imageUrl: widget.originalImageUrl!,
-                  selected:
-                      widget.selectedImageVersion == 'original',
+                  selected: widget.selectedImageVersion == 'original',
                   enabled: !widget.loading,
                   onTap: widget.onSelectOriginal,
                 ),
@@ -203,8 +184,7 @@ class _ProductEditorSectionState extends State<ProductEditorSection> {
                   child: _buildImageOption(
                     label: 'Enhanced',
                     imageUrl: widget.enhancedImageUrl!,
-                    selected:
-                        widget.selectedImageVersion == 'enhanced',
+                    selected: widget.selectedImageVersion == 'enhanced',
                     enabled: !widget.loading,
                     onTap: widget.onSelectEnhanced,
                   ),
@@ -217,7 +197,7 @@ class _ProductEditorSectionState extends State<ProductEditorSection> {
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Text(
-                'No enhanced version available yet.',
+                t('noEnhanced'),
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ),
@@ -229,11 +209,9 @@ class _ProductEditorSectionState extends State<ProductEditorSection> {
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
-              onPressed: widget.loading
-                  ? null
-                  : widget.onTestImageEnhancement,
+              onPressed: widget.loading ? null : widget.onTestImageEnhancement,
               icon: const Icon(Icons.auto_awesome),
-              label: const Text('Enhance product image'),
+              label: Text(t('enhanceImage')),
             ),
           ),
 
@@ -245,19 +223,18 @@ class _ProductEditorSectionState extends State<ProductEditorSection> {
             onPressed: widget.loading ? null : widget.onSave,
             child: Text(
               isEditing
-                  ? 'Update product'
+                  ? t('updateProduct')
                   : widget.savedProductId != null
-                      ? 'Retry image upload'
-                      : 'Save as draft',
+                  ? t('retryUpload')
+                  : t('saveDraft'),
             ),
           ),
         ),
 
         if (isEditing)
           TextButton(
-            onPressed:
-                widget.loading ? null : widget.onCancelEditing,
-            child: const Text('Cancel editing'),
+            onPressed: widget.loading ? null : widget.onCancelEditing,
+            child: Text(t('cancelEditing')),
           ),
       ],
     );
@@ -270,6 +247,7 @@ class _ProductEditorSectionState extends State<ProductEditorSection> {
     required bool enabled,
     required VoidCallback onTap,
   }) {
+    final t = (String key) => UiText.get(context, key);
     return InkWell(
       onTap: enabled ? onTap : null,
       borderRadius: BorderRadius.circular(12),
@@ -283,14 +261,11 @@ class _ProductEditorSectionState extends State<ProductEditorSection> {
               child: Image.network(
                 imageUrl,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const Center(
-                  child: Icon(Icons.broken_image_outlined),
-                ),
+                errorBuilder: (_, __, ___) =>
+                    const Center(child: Icon(Icons.broken_image_outlined)),
                 loadingBuilder: (context, child, progress) {
                   if (progress == null) return child;
-                  return const Center(
-                    child: CircularProgressIndicator(),
-                  );
+                  return const Center(child: CircularProgressIndicator());
                 },
               ),
             ),
@@ -303,22 +278,16 @@ class _ProductEditorSectionState extends State<ProductEditorSection> {
               Expanded(
                 child: Text(
                   label,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
               ),
               if (selected)
-                const Icon(
-                  Icons.check_circle,
-                  color: Colors.green,
-                  size: 18,
-                ),
+                const Icon(Icons.check_circle, color: Colors.green, size: 18),
             ],
           ),
 
           Text(
-            selected ? 'Currently selected' : 'Tap to select',
+            selected ? t('selected') : t('tapSelect'),
             style: const TextStyle(fontSize: 11),
           ),
         ],

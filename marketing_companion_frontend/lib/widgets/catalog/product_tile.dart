@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../l10n/ui_text.dart';
 
 class ProductTile extends StatelessWidget {
   final String title;
@@ -33,17 +34,17 @@ class ProductTile extends StatelessWidget {
 
     final statusDetails = switch (status) {
       'published' => (
-        label: 'Published',
+        label: UiText.status(context, 'published'),
         background: colors.primaryContainer,
         foreground: colors.onPrimaryContainer,
       ),
       'archived' => (
-        label: 'Archived',
+        label: UiText.status(context, 'archived'),
         background: colors.surfaceContainerHighest,
         foreground: colors.onSurfaceVariant,
       ),
       _ => (
-        label: 'Draft',
+        label: UiText.status(context, 'draft'),
         background: colors.secondaryContainer,
         foreground: colors.onSecondaryContainer,
       ),
@@ -110,7 +111,7 @@ class ProductTile extends StatelessWidget {
                           Flexible(
                             child: Text(
                               price == null || price!.isEmpty
-                                  ? 'Price not set'
+                                  ? UiText.get(context, 'priceNotSet')
                                   : '₹$price',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -147,7 +148,7 @@ class ProductTile extends StatelessWidget {
                   trailing!,
                 ] else if (onAction != null)
                   PopupMenuButton<String>(
-                    tooltip: 'Product actions',
+                    tooltip: UiText.get(context, 'productActions'),
                     enabled: onAction != null,
                     icon: Icon(Icons.more_vert, color: colors.onSurfaceVariant),
                     onSelected: (value) {
@@ -166,7 +167,7 @@ class ProductTile extends StatelessWidget {
                               color: colors.onSurface,
                             ),
                             const SizedBox(width: 12),
-                            Text(actionLabel ?? 'Action'),
+                            Text(actionLabel ?? UiText.get(context, 'action')),
                           ],
                         ),
                       ),

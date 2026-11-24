@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../l10n/ui_text.dart';
 
 class VoiceAssistantSection extends StatelessWidget {
   final TextEditingController controller;
@@ -40,13 +41,13 @@ class VoiceAssistantSection extends StatelessWidget {
                   const Icon(Icons.mic, size: 19),
                   const SizedBox(width: 8),
                   Text(
-                    'Artisan Voice Assistant',
+                    UiText.get(context, 'voiceAssistant'),
                     style: Theme.of(context).textTheme.titleSmall,
                   ),
                   const Spacer(),
                   if (isListening)
-                    const Text(
-                      'Listening…',
+                    Text(
+                      UiText.get(context, 'listening'),
                       style: TextStyle(color: Colors.red),
                     ),
                 ],
@@ -63,8 +64,8 @@ class VoiceAssistantSection extends StatelessWidget {
                       onSubmitted: (_) {
                         if (!loading) onSubmit();
                       },
-                      decoration: const InputDecoration(
-                        hintText: 'Try "Load my products” or “Edit blue vase”',
+                      decoration: InputDecoration(
+                        hintText: UiText.get(context, 'voiceHint'),
                         border: OutlineInputBorder(),
                         isDense: true,
                       ),
@@ -72,16 +73,18 @@ class VoiceAssistantSection extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   IconButton.filled(
-                    tooltip: isListening ? 'Stop listening' : 'Speak',
+                    tooltip: isListening
+                        ? UiText.get(context, 'stopRecording')
+                        : UiText.get(context, 'speak'),
                     onPressed: !speechAvailable || loading
                         ? null
                         : isListening
-                            ? onStopListening
-                            : onStartListening,
+                        ? onStopListening
+                        : onStartListening,
                     icon: Icon(isListening ? Icons.stop : Icons.mic),
                   ),
                   IconButton.filledTonal(
-                    tooltip: 'Run command',
+                    tooltip: UiText.get(context, 'runCommand'),
                     onPressed: loading || controller.text.trim().isEmpty
                         ? null
                         : onSubmit,

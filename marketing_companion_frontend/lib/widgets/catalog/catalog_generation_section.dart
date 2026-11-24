@@ -1,5 +1,5 @@
-
 import 'package:flutter/material.dart';
+import '../../l10n/ui_text.dart';
 
 class CatalogGenerationSection extends StatelessWidget {
   final TextEditingController inputController;
@@ -29,7 +29,7 @@ class CatalogGenerationSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Speak to generate catalog',
+          UiText.get(context, 'speakGenerate'),
           style: Theme.of(context).textTheme.titleLarge,
         ),
         Row(
@@ -40,21 +40,24 @@ class CatalogGenerationSection extends StatelessWidget {
                 controller: inputController,
                 minLines: 3,
                 maxLines: 6,
-                decoration: const InputDecoration(
-                  labelText: 'Describe your product',
-                  hintText:
-                      'I make handmade blue pottery bowls. Each costs 500 rupees...',
+                decoration: InputDecoration(
+                  labelText: UiText.get(context, 'describeProduct'),
+                  hintText: UiText.isHindi(context)
+                      ? 'मैं हाथ से मिट्टी के बर्तन बनाता हूँ। प्रत्येक की कीमत 500 रुपये है...'
+                      : 'I make handmade blue pottery bowls. Each costs 500 rupees...',
                 ),
               ),
             ),
             const SizedBox(width: 8),
             IconButton.filled(
-              tooltip: isListening ? 'Stop recording' : 'Start voice input',
+              tooltip: isListening
+                  ? UiText.get(context, 'stopRecording')
+                  : UiText.get(context, 'startInput'),
               onPressed: !speechAvailable
                   ? null
                   : isListening
-                      ? onStopListening
-                      : onStartListening,
+                  ? onStopListening
+                  : onStartListening,
               icon: Icon(isListening ? Icons.stop : Icons.mic),
             ),
           ],
@@ -72,7 +75,7 @@ class CatalogGenerationSection extends StatelessWidget {
           onPressed: loading || inputController.text.trim().isEmpty
               ? null
               : onGenerate,
-          child: const Text('Generate Catalog'),
+          child: Text(UiText.get(context, 'generateCatalog')),
         ),
       ],
     );
