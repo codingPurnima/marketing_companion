@@ -3,6 +3,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app.dart';
 import 'config/app_config.dart';
+import 'providers/locale_provider.dart';
+
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,5 +17,9 @@ Future<void> main() async {
 
   await Supabase.initialize(url: supabaseUrl, publishableKey: supabaseKey);
 
-  runApp(const ArtisanApp());
+  final localeController = await LocaleController.load();
+
+  runApp(
+    ArtisanApp(localeController: localeController),
+  );
 }
